@@ -158,12 +158,9 @@ export default function PublicMenu() {
           </Reveal>
 
           <Reveal delay={90}>
-            <h1 className="mt-4 text-3xl font-extrabold uppercase tracking-tight" style={{ color: theme }}>
+            <h1 className={`mt-4 text-3xl font-extrabold tracking-tight ${isAr ? '' : 'uppercase'}`} style={{ color: theme }}>
               {name(restaurant, 'nameEn', 'nameAr')}
             </h1>
-            <p className={`mt-0.5 text-xl font-bold text-gray-700 ${isAr ? '' : 'font-arabic'}`}>
-              {isAr ? restaurant.nameEn : restaurant.nameAr}
-            </p>
           </Reveal>
 
           {/* Bilingual tagline with the dashed decoration from the reference cover */}
@@ -171,14 +168,15 @@ export default function PublicMenu() {
             <Reveal delay={170}>
               <div className="mt-3 flex items-center justify-center gap-3">
                 <span className="h-px w-10 bg-gray-300" />
-                <div>
-                  {restaurant.taglineAr && (
-                    <p className="font-arabic text-sm font-bold text-gray-600">{restaurant.taglineAr}</p>
-                  )}
-                  {restaurant.taglineEn && (
-                    <p className="font-sans text-[11px] font-bold uppercase tracking-[0.2em] text-gray-500">{restaurant.taglineEn}</p>
-                  )}
-                </div>
+                <p
+                  className={
+                    isAr
+                      ? 'font-arabic text-sm font-bold text-gray-600'
+                      : 'font-sans text-[11px] font-bold uppercase tracking-[0.2em] text-gray-500'
+                  }
+                >
+                  {name(restaurant, 'taglineEn', 'taglineAr')}
+                </p>
                 <span className="h-px w-10 bg-gray-300" />
               </div>
             </Reveal>
@@ -249,11 +247,12 @@ export default function PublicMenu() {
             >
               {/* Section title — banner style, like a category divider in the printed menu */}
               <div
-                className="mb-3 flex items-center justify-center gap-2.5 rounded-lg px-4 py-2 shadow-sm"
+                className="mb-3 flex items-center justify-center rounded-lg px-4 py-2 shadow-sm"
                 style={{ backgroundColor: theme, color: onTheme }}
               >
-                <span className="text-sm font-extrabold uppercase tracking-wider">{c.nameEn}</span>
-                <span className="font-arabic text-sm font-extrabold">{c.nameAr}</span>
+                <span className={`font-extrabold ${isAr ? 'font-arabic text-[15px]' : 'text-sm uppercase tracking-wider'}`}>
+                  {name(c, 'nameEn', 'nameAr')}
+                </span>
               </div>
 
               <div className={wrapClass}>
@@ -345,9 +344,10 @@ export default function PublicMenu() {
             </button>
 
             {/* Banner inside the sheet, matching the card style */}
-            <div className="flex items-center justify-center gap-2.5 px-10 py-3" style={{ backgroundColor: theme, color: onTheme }}>
-              <span className="text-base font-extrabold uppercase tracking-wide">{detail.nameEn}</span>
-              <span className="font-arabic text-base font-extrabold">{detail.nameAr}</span>
+            <div className="flex items-center justify-center px-10 py-3" style={{ backgroundColor: theme, color: onTheme }}>
+              <span className={`truncate font-extrabold ${isAr ? 'font-arabic text-lg' : 'text-base uppercase tracking-wide'}`}>
+                {isAr ? detail.nameAr || detail.nameEn : detail.nameEn || detail.nameAr}
+              </span>
             </div>
 
             {detail.imageUrl ? (
@@ -441,13 +441,13 @@ function GridCard({ item, theme, onTheme, isAr, currency, onOpen }) {
       onClick={onOpen}
       className="group relative w-full overflow-hidden rounded-xl bg-white text-start shadow-soft ring-1 ring-black/10 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-lift active:scale-[0.98]"
     >
-      {/* Full-width banner: EN + AR on one centered line */}
-      <div
-        className="flex items-center justify-center gap-1.5 px-2 py-2"
-        style={{ backgroundColor: theme, color: onTheme }}
-      >
-        <span className="truncate text-[11px] font-extrabold uppercase leading-tight tracking-wide">{item.nameEn}</span>
-        <span className="font-arabic truncate text-[12px] font-extrabold leading-tight">{item.nameAr}</span>
+      {/* Full-width banner — current language only */}
+      <div className="flex items-center justify-center px-2 py-2" style={{ backgroundColor: theme, color: onTheme }}>
+        <span
+          className={`truncate font-extrabold leading-tight ${isAr ? 'font-arabic text-[13px]' : 'text-[11px] uppercase tracking-wide'}`}
+        >
+          {isAr ? item.nameAr || item.nameEn : item.nameEn || item.nameAr}
+        </span>
       </div>
 
       {/* Product photo on white with the watermark pattern */}
@@ -478,12 +478,12 @@ function LargeCard({ item, theme, onTheme, isAr, currency, onOpen }) {
       onClick={onOpen}
       className="group relative block w-full overflow-hidden rounded-xl bg-white text-start shadow-soft ring-1 ring-black/10 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-lift active:scale-[0.99]"
     >
-      <div
-        className="flex items-center justify-center gap-2 px-3 py-2.5"
-        style={{ backgroundColor: theme, color: onTheme }}
-      >
-        <span className="truncate text-sm font-extrabold uppercase leading-tight tracking-wide">{item.nameEn}</span>
-        <span className="font-arabic truncate text-sm font-extrabold leading-tight">{item.nameAr}</span>
+      <div className="flex items-center justify-center px-3 py-2.5" style={{ backgroundColor: theme, color: onTheme }}>
+        <span
+          className={`truncate font-extrabold leading-tight ${isAr ? 'font-arabic text-[15px]' : 'text-sm uppercase tracking-wide'}`}
+        >
+          {isAr ? item.nameAr || item.nameEn : item.nameEn || item.nameAr}
+        </span>
       </div>
 
       <div className="pattern-arabesque relative bg-white">
@@ -520,10 +520,12 @@ function CompactCard({ item, theme, onTheme, isAr, currency, onOpen }) {
       onClick={onOpen}
       className="group relative w-full overflow-hidden rounded-xl bg-white text-start shadow-soft ring-1 ring-black/10 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-lift active:scale-[0.97]"
     >
-      {/* Stacked banner: Arabic over English, centered — like the burger cards */}
-      <div className="flex flex-col items-center px-1 py-1.5" style={{ backgroundColor: theme, color: onTheme }}>
-        <span className="font-arabic w-full truncate text-center text-[10px] font-extrabold leading-tight">{item.nameAr}</span>
-        <span className="w-full truncate text-center text-[8px] font-extrabold uppercase leading-tight tracking-wide">{item.nameEn}</span>
+      <div className="flex items-center justify-center px-1 py-1.5" style={{ backgroundColor: theme, color: onTheme }}>
+        <span
+          className={`w-full truncate text-center font-extrabold leading-tight ${isAr ? 'font-arabic text-[11px]' : 'text-[9px] uppercase tracking-wide'}`}
+        >
+          {isAr ? item.nameAr || item.nameEn : item.nameEn || item.nameAr}
+        </span>
       </div>
 
       <div className="pattern-arabesque relative aspect-square bg-white">
@@ -568,10 +570,11 @@ function ListCard({ item, theme, onTheme, isAr, currency, onOpen }) {
       </div>
 
       <div className="min-w-0 flex-1">
-        <div className="flex flex-wrap items-baseline gap-x-2">
-          <span className="text-[13px] font-extrabold uppercase tracking-wide text-gray-900">{item.nameEn}</span>
-          <span className="font-arabic text-[13px] font-extrabold text-gray-600">{item.nameAr}</span>
-        </div>
+        <span
+          className={`block truncate font-extrabold text-gray-900 ${isAr ? 'font-arabic text-[14px]' : 'text-[13px] uppercase tracking-wide'}`}
+        >
+          {isAr ? item.nameAr || item.nameEn : item.nameEn || item.nameAr}
+        </span>
         {desc && <p className="mt-0.5 line-clamp-1 text-xs text-gray-400">{desc}</p>}
         {item.badgeText && (
           <span
@@ -615,10 +618,11 @@ function HeroCard({ item, theme, onTheme, isAr, currency, onOpen }) {
 
         <div className="absolute inset-x-0 bottom-0 flex items-end justify-between gap-3 p-4">
           <div className="min-w-0">
-            <div className="flex flex-wrap items-baseline gap-x-2">
-              <span className="text-lg font-extrabold uppercase tracking-wide text-white drop-shadow">{item.nameEn}</span>
-              <span className="font-arabic text-lg font-extrabold text-white/95 drop-shadow">{item.nameAr}</span>
-            </div>
+            <span
+              className={`block truncate font-extrabold text-white drop-shadow ${isAr ? 'font-arabic text-xl' : 'text-lg uppercase tracking-wide'}`}
+            >
+              {isAr ? item.nameAr || item.nameEn : item.nameEn || item.nameAr}
+            </span>
             {desc && <p className="mt-0.5 line-clamp-1 text-xs text-white/75">{desc}</p>}
           </div>
           <span className="flex shrink-0 flex-col items-center rounded-xl px-3 py-1.5 text-white shadow-lift" style={{ background: TAG_GRADIENT }}>

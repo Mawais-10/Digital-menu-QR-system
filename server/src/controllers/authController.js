@@ -57,7 +57,9 @@ export async function refresh(req, res) {
   if (!user || user.refreshTokenHash !== hashToken(token)) {
     throw new HttpError(401, 'Refresh token revoked');
   }
-  const accessToken = await issueSession(res, user); // rotation
+  // Issue a fresh access token WITHOUT rotating the refresh cookie — rotation made
+  // parallel refreshes (second tab, remounted app) race each other into a logout.
+  const accessToken = signAccessToken(user);
   res.json({ accessToken, user: user.toSafeJSON() });
 }
 
