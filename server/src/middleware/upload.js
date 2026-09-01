@@ -21,6 +21,11 @@ export const upload = multer({
 
 // Upload to Cloudinary, resized + auto-optimized. Returns the delivery URL.
 export function processImage(buffer, { maxWidth = 1200 } = {}) {
+  if (!env.cloudinary.cloudName || !env.cloudinary.apiKey || !env.cloudinary.apiSecret) {
+    const err = new Error('Image storage is not configured — set the CLOUDINARY_* environment variables on the server');
+    err.status = 500;
+    return Promise.reject(err);
+  }
   return new Promise((resolve, reject) => {
     const stream = cloudinary.uploader.upload_stream(
       {
