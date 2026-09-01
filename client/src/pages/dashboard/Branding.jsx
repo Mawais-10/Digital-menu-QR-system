@@ -69,7 +69,7 @@ export default function Branding() {
               <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={uploadLogo} />
               <div className="flex items-center gap-4">
                 {restaurant?.logoUrl ? (
-                  <img src={restaurant.logoUrl} alt="Logo" className="h-16 w-16 rounded-full object-cover ring-2 ring-brand-100" />
+                  <img src={restaurant.logoUrl} alt="Logo" className="h-16 w-auto max-w-[180px] rounded-lg object-contain ring-1 ring-gray-100" />
                 ) : (
                   <div className="flex h-16 w-16 items-center justify-center rounded-full bg-brand-100 text-xl font-bold text-brand-600">
                     {form.nameEn[0]?.toUpperCase() || '?'}
@@ -157,7 +157,7 @@ export default function Branding() {
                 {/* Mini header */}
                 <div className="pattern-arabesque relative px-4 py-5 text-center text-white" style={{ backgroundColor: form.themeColor }}>
                   {restaurant?.logoUrl ? (
-                    <img src={restaurant.logoUrl} alt="" className="mx-auto h-12 w-12 rounded-full object-cover ring-2 ring-white/60" />
+                    <img src={restaurant.logoUrl} alt="" className="mx-auto h-12 w-auto max-w-[140px] rounded-md object-contain" />
                   ) : (
                     <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-white/25 text-lg font-bold ring-2 ring-white/60">
                       {form.nameEn[0]?.toUpperCase() || '?'}

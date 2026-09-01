@@ -140,12 +140,13 @@ export default function PublicMenu() {
         <div className="mx-auto max-w-lg px-6">
           <Reveal>
             {restaurant.logoUrl ? (
+              // Logo shown as-is — no circle crop, wide wordmark logos stay complete
               <SmartImage
                 src={restaurant.logoUrl}
                 alt={restaurant.nameEn}
                 eager
-                className="mx-auto h-24 w-24 rounded-full border-4 border-white shadow-lift"
-                imgClassName="h-full w-full object-cover"
+                className="mx-auto w-fit overflow-hidden rounded-xl"
+                imgClassName="h-24 w-auto max-w-[300px] object-contain"
               />
             ) : (
               <div
@@ -199,11 +200,11 @@ export default function PublicMenu() {
             {/* Mini logo slides in once the header scrolls away */}
             <div
               className={`shrink-0 overflow-hidden transition-all duration-300 ease-out ${
-                scrolled ? 'me-1 w-8 opacity-100' : 'w-0 opacity-0'
+                scrolled ? 'me-1 max-w-[90px] opacity-100' : 'max-w-0 opacity-0'
               }`}
             >
               {restaurant.logoUrl ? (
-                <img src={restaurant.logoUrl} alt="" className="h-8 w-8 rounded-full object-cover" />
+                <img src={restaurant.logoUrl} alt="" className="h-8 w-auto max-w-[86px] rounded-md object-contain" />
               ) : (
                 <div
                   className="flex h-8 w-8 items-center justify-center rounded-full text-sm font-extrabold"
