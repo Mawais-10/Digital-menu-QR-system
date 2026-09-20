@@ -25,7 +25,7 @@ export default function Landing() {
         <div className="mx-auto flex max-w-6xl items-center justify-between px-5 py-3.5">
           <div className="flex items-center gap-2.5">
             <LogoMark />
-            <span className="text-lg font-extrabold tracking-tight text-gray-900">Simat</span>
+            <span className="text-lg font-extrabold tracking-tight text-gray-900">DINEZA</span>
           </div>
           <div className="flex items-center gap-2.5">
             <Link to="/login"><Button variant="ghost">Sign in</Button></Link>
@@ -153,9 +153,9 @@ export default function Landing() {
       <footer className="border-t border-gray-100 py-8 text-center text-xs text-gray-400">
         <div className="mb-2 flex items-center justify-center gap-2">
           <LogoMark size={22} />
-          <span className="font-extrabold text-gray-600">Simat</span>
+          <span className="font-extrabold text-gray-600">DINEZA</span>
         </div>
-        © {new Date().getFullYear()} Simat — Digital menus for the GCC
+        © {new Date().getFullYear()} DINEZA — Digital menus for the GCC
       </footer>
     </div>
   );

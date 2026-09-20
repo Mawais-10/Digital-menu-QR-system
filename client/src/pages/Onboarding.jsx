@@ -83,7 +83,7 @@ export default function Onboarding() {
       <div className="mx-auto max-w-lg">
         <div className="mb-8 flex items-center justify-center gap-2.5">
           <LogoMark />
-          <span className="text-lg font-extrabold text-gray-900">Simat</span>
+          <span className="text-lg font-extrabold text-gray-900">DINEZA</span>
         </div>
 
         {/* Step indicator */}

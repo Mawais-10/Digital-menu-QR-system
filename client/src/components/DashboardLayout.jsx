@@ -30,7 +30,7 @@ export default function DashboardLayout() {
       <div className="flex items-center gap-2.5 px-5 py-5">
         <LogoMark />
         <div>
-          <div className="text-[15px] font-extrabold tracking-tight text-gray-900">Simat</div>
+          <div className="text-[15px] font-extrabold tracking-tight text-gray-900">DINEZA</div>
           <div className="text-[10px] font-medium uppercase tracking-widest text-gray-400">Menu Platform</div>
         </div>
       </div>
@@ -104,7 +104,7 @@ export default function DashboardLayout() {
         </button>
         <div className="flex items-center gap-2">
           <LogoMark size={28} />
-          <span className="text-sm font-extrabold text-gray-900">Simat</span>
+          <span className="text-sm font-extrabold text-gray-900">DINEZA</span>
         </div>
         <div className="w-9" />
       </header>

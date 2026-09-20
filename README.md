@@ -1,6 +1,6 @@
-# Simat
+# DINEZA
 
-Simat is a digital menu platform for restaurants.
+DINEZA is a digital menu platform for restaurants.
 
 ## What it is
 
@@ -16,4 +16,4 @@ A web app where a restaurant owner builds their menu once — in Arabic and Engl
 
 ## The problem it solves
 
-Paper menus are expensive and always out of date. Every price change, sold-out item or new dish means reprinting menus for every table in every branch. Simat replaces that with a single QR code per branch: print once, update forever. Prices and items change in seconds, stay in sync across branches, and customers always see the current menu in their own language.
+Paper menus are expensive and always out of date. Every price change, sold-out item or new dish means reprinting menus for every table in every branch. DINEZA replaces that with a single QR code per branch: print once, update forever. Prices and items change in seconds, stay in sync across branches, and customers always see the current menu in their own language.

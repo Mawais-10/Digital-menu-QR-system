@@ -36,7 +36,7 @@ export default function Login() {
       <div className="w-full max-w-xs">
         <div className="mb-8 flex flex-col items-center gap-3">
           <LogoMark size={44} />
-          <span className="text-xl font-extrabold tracking-tight text-gray-900">Simat</span>
+          <span className="text-xl font-extrabold tracking-tight text-gray-900">DINEZA</span>
         </div>
 
         <form onSubmit={submit} className="space-y-4">

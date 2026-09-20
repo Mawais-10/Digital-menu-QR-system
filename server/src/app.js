@@ -12,7 +12,7 @@ const app = express();
 app.set('trust proxy', 1);
 app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
 
-// CLIENT_ORIGIN supports a comma-separated list, e.g. "https://simat.vercel.app,http://localhost:5180"
+// CLIENT_ORIGIN supports a comma-separated list, e.g. "https://DINEZA.vercel.app,http://localhost:5180"
 const allowedOrigins = env.clientOrigin.split(',').map((o) => o.trim().replace(/\/$/, '')).filter(Boolean);
 app.use(cors({ origin: allowedOrigins, credentials: true }));
 app.use(express.json({ limit: '1mb' }));

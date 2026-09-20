@@ -12,7 +12,7 @@ export default function AuthShell({ title, subtitle, children, footer }) {
         <div className="relative flex h-full flex-col justify-between p-12">
           <Link to="/" className="flex items-center gap-2.5">
             <div className="rounded-xl bg-white/95 p-1"><LogoMark size={30} /></div>
-            <span className="text-lg font-extrabold text-white">Simat</span>
+            <span className="text-lg font-extrabold text-white">DINEZA</span>
           </Link>
 
           <div>
@@ -40,7 +40,7 @@ export default function AuthShell({ title, subtitle, children, footer }) {
             </div>
           </div>
 
-          <p className="text-xs text-orange-200/70">© {new Date().getFullYear()} Simat — Digital menus for the GCC</p>
+          <p className="text-xs text-orange-200/70">© {new Date().getFullYear()} DINEZA — Digital menus for the GCC</p>
         </div>
       </div>
 
@@ -49,7 +49,7 @@ export default function AuthShell({ title, subtitle, children, footer }) {
         <div className="w-full max-w-sm">
           <Link to="/" className="mb-8 flex items-center gap-2 lg:hidden">
             <LogoMark size={30} />
-            <span className="text-lg font-extrabold text-gray-900">Simat</span>
+            <span className="text-lg font-extrabold text-gray-900">DINEZA</span>
           </Link>
           <h1 className="text-2xl font-extrabold text-gray-900">{title}</h1>
           <p className="mt-1.5 text-sm text-gray-500">{subtitle}</p>

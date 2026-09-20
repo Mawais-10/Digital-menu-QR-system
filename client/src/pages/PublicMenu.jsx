@@ -497,7 +497,7 @@ export default function PublicMenu() {
 
       {/* Footer */}
       <div className="mx-auto mt-10 max-w-xs pb-4 text-center text-sm text-gray-600">
-        Powered by <span className="font-semibold text-gray-400">Simat</span>
+        Powered by <span className="font-semibold text-gray-400">DINEZA</span>
       </div>
 
       {/* ===== Bottom tab bar ===== */}
