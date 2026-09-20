@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import {
-  Search, X, LayoutGrid, Heart, Info, MapPin, Phone, Navigation, UtensilsCrossed, Plus, SearchX,
+  Search, X, LayoutGrid, Heart, Info, MapPin, Phone, Navigation, UtensilsCrossed, Plus, Minus, SearchX, ShoppingBag, Trash2,
 } from 'lucide-react';
 import { publicApi } from '../api/endpoints.js';
 import { SmartImage } from '../components/motion.jsx';
@@ -43,7 +43,10 @@ export default function PublicMenu() {
   const [search, setSearch] = useState('');
   const [activeCat, setActiveCat] = useState(null);
   const [detail, setDetail] = useState(null);
+  const [detailQty, setDetailQty] = useState(1);
   const [favorites, setFavorites] = useState([]);
+  const [order, setOrder] = useState([]); // [{ id, qty }]
+  const [orderOpen, setOrderOpen] = useState(false);
   const sectionRefs = useRef({});
   const tabRefs = useRef({});
   const clickScrolling = useRef(false);
@@ -60,6 +63,11 @@ export default function PublicMenu() {
           setFavorites(JSON.parse(localStorage.getItem(`qm_fav_${slug}`) || '[]'));
         } catch {
           setFavorites([]);
+        }
+        try {
+          setOrder(JSON.parse(localStorage.getItem(`qm_order_${slug}`) || '[]'));
+        } catch {
+          setOrder([]);
         }
         setStatus('ready');
         document.title = `${data.restaurant.nameEn} — Menu`;
@@ -82,6 +90,40 @@ export default function PublicMenu() {
     },
     [slug]
   );
+
+  const setOrderPersist = useCallback(
+    (updater) => {
+      setOrder((prev) => {
+        const next = typeof updater === 'function' ? updater(prev) : updater;
+        localStorage.setItem(`qm_order_${slug}`, JSON.stringify(next));
+        return next;
+      });
+    },
+    [slug]
+  );
+
+  const addToOrder = useCallback(
+    (id, qty = 1) => {
+      setOrderPersist((prev) => {
+        const existing = prev.find((r) => r.id === id);
+        if (existing) return prev.map((r) => (r.id === id ? { ...r, qty: r.qty + qty } : r));
+        return [...prev, { id, qty }];
+      });
+    },
+    [setOrderPersist]
+  );
+
+  const setOrderQty = useCallback(
+    (id, qty) => {
+      setOrderPersist((prev) => (qty <= 0 ? prev.filter((r) => r.id !== id) : prev.map((r) => (r.id === id ? { ...r, qty } : r))));
+    },
+    [setOrderPersist]
+  );
+
+  // Reset the modal quantity whenever a new product opens
+  useEffect(() => {
+    if (detail) setDetailQty(1);
+  }, [detail]);
 
   const isAr = lang === 'ar';
   const theme = data?.restaurant.themeColor || '#F97316';
@@ -118,6 +160,18 @@ export default function PublicMenu() {
     () => (data ? data.items.filter((i) => favorites.includes(i.id)) : []),
     [data, favorites]
   );
+
+  const orderRows = useMemo(() => {
+    if (!data) return [];
+    return order
+      .map((r) => {
+        const item = data.items.find((i) => i.id === r.id);
+        return item ? { item, qty: r.qty } : null;
+      })
+      .filter(Boolean);
+  }, [data, order]);
+  const orderCount = orderRows.reduce((sum, r) => sum + r.qty, 0);
+  const orderTotal = orderRows.reduce((sum, r) => sum + r.item.price * r.qty, 0);
 
   // Scrollspy — highlight the category tab currently in view
   useEffect(() => {
@@ -376,6 +430,7 @@ export default function PublicMenu() {
                     fav={favorites.includes(item.id)}
                     onFav={() => toggleFavorite(item.id)}
                     onOpen={() => setDetail(item)}
+                    onAdd={() => addToOrder(item.id, 1)}
                   />
                 ))}
               </div>
@@ -415,6 +470,7 @@ export default function PublicMenu() {
                   fav={favorites.includes(item.id)}
                   onFav={() => toggleFavorite(item.id)}
                   onOpen={() => setDetail(item)}
+                  onAdd={() => addToOrder(item.id, 1)}
                 />
               ))}
             </div>
@@ -433,14 +489,16 @@ export default function PublicMenu() {
           {[
             { id: 'menu', icon: UtensilsCrossed, label: isAr ? 'القائمة' : 'Menu', onClick: () => { setTab('menu'); setSearch(''); window.scrollTo({ top: 0 }); } },
             { id: 'favorites', icon: Heart, label: isAr ? 'المفضلة' : 'Favorites', onClick: () => { setTab('favorites'); setSearch(''); window.scrollTo({ top: 0 }); }, count: favorites.length },
+            { id: 'order', icon: ShoppingBag, label: isAr ? 'الطلب' : 'Order', onClick: () => setOrderOpen(true), count: orderCount },
             { id: 'info', icon: Info, label: isAr ? 'معلومات' : 'Info', onClick: () => setInfoOpen(true) },
           ].map(({ id, icon: Icon, label, onClick, count }) => {
-            const active = id === 'info' ? infoOpen : tab === id && !infoOpen;
+            const active =
+              id === 'info' ? infoOpen : id === 'order' ? orderOpen : tab === id && !infoOpen && !orderOpen;
             return (
               <button key={id} onClick={onClick} className="flex min-w-[4rem] flex-1 cursor-pointer flex-col items-center py-2 transition">
                 <span className="relative">
                   <Icon size={21} style={{ color: active ? theme : '#9CA3AF' }} fill={id === 'favorites' && count > 0 ? theme : 'none'} strokeWidth={id === 'favorites' && count > 0 ? 0 : 2} />
-                  {id === 'favorites' && count > 0 && (
+                  {count > 0 && id !== 'menu' && (
                     <span
                       className="absolute -end-2 -top-1.5 flex min-h-[17px] min-w-[17px] items-center justify-center rounded-full px-1 text-[10px] font-semibold"
                       style={{ backgroundColor: theme, color: onTheme }}
@@ -535,69 +593,174 @@ export default function PublicMenu() {
         </div>
       )}
 
-      {/* ===== Product detail modal ===== */}
+      {/* ===== Product detail modal — floating card with sticky action bar, reference style ===== */}
       {detail && (
         <div
-          className="fixed inset-0 z-[70] flex items-end justify-center overflow-y-auto bg-white/50 p-0 backdrop-blur sm:items-center sm:p-6"
+          className="fixed left-0 right-0 top-0 z-[70] h-screen transform overflow-y-scroll bg-white/50 backdrop-blur"
           onClick={() => setDetail(null)}
         >
-          <div
-            onClick={(e) => e.stopPropagation()}
-            className="animate-pop w-[550px] max-w-full shrink-0 overflow-hidden rounded-t-xl bg-white shadow-lg sm:rounded-xl"
-          >
-            <div className="relative">
-              {detail.imageUrl ? (
-                <SmartImage src={detail.imageUrl} alt="" eager className="w-full" imgClassName="aspect-[4/3] w-full object-cover" />
-              ) : (
-                <div className="flex aspect-[16/9] items-center justify-center" style={{ backgroundColor: primary10 }}>
-                  <UtensilsCrossed size={40} style={{ color: theme }} />
-                </div>
-              )}
-              {detail.badgeText && (
-                <span
-                  className="absolute start-3 top-3 rounded-md px-2.5 py-1 text-xs font-semibold shadow-sm"
-                  style={{ backgroundColor: theme, color: onTheme }}
-                >
-                  {detail.badgeText}
-                </span>
-              )}
+          <div className="mx-auto flex h-full min-h-screen w-full flex-col items-center justify-center px-4 py-6">
+            <div
+              onClick={(e) => e.stopPropagation()}
+              className="animate-pop relative w-[550px] max-w-full shrink-0 rounded-xl bg-white shadow-lg"
+            >
+              <div className="relative flex w-full shrink-0 items-center overflow-hidden rounded-t-xl">
+                {detail.imageUrl ? (
+                  <SmartImage src={detail.imageUrl} alt="" eager className="w-full" imgClassName="aspect-[4/3] w-full rounded-t-xl object-cover" />
+                ) : (
+                  <div className="flex aspect-[16/9] w-full items-center justify-center rounded-t-xl" style={{ backgroundColor: primary10 }}>
+                    <UtensilsCrossed size={40} style={{ color: theme }} />
+                  </div>
+                )}
+                {detail.badgeText && (
+                  <span
+                    className="absolute start-4 top-4 rounded-md px-2.5 py-1 text-xs font-semibold shadow-sm"
+                    style={{ backgroundColor: theme, color: onTheme }}
+                  >
+                    {detail.badgeText}
+                  </span>
+                )}
+              </div>
               <button
                 onClick={() => setDetail(null)}
-                className="absolute end-3 top-3 z-20 flex h-9 w-9 items-center justify-center rounded-full bg-white/90 text-gray-600 shadow-sm backdrop-blur"
+                className="absolute end-5 top-5 z-20 flex h-9 w-9 items-center justify-center rounded-full bg-white/90 text-gray-600 shadow-sm backdrop-blur"
               >
+                <X size={17} />
+              </button>
+
+              <div className="px-4 pt-4">
+                <div className="flex min-w-0 items-center">
+                  <h3 className="min-w-0 flex-1 break-words font-sans text-xl font-semibold text-gray-900">
+                    {isAr ? detail.nameAr || detail.nameEn : detail.nameEn || detail.nameAr}
+                  </h3>
+                  <div className="flex shrink-0 ps-6">
+                    <button
+                      onClick={() => toggleFavorite(detail.id)}
+                      className="flex h-10 w-10 items-center justify-center rounded-full transition-colors"
+                      style={
+                        favorites.includes(detail.id)
+                          ? { backgroundColor: theme, color: onTheme }
+                          : { backgroundColor: primary10, color: theme }
+                      }
+                    >
+                      <Heart size={18} fill={favorites.includes(detail.id) ? 'currentColor' : 'none'} />
+                    </button>
+                  </div>
+                </div>
+                {(detail.descriptionEn || detail.descriptionAr) && (
+                  <p className="mt-1 whitespace-pre-line text-sm italic text-gray-500">
+                    {isAr ? detail.descriptionAr || detail.descriptionEn : detail.descriptionEn || detail.descriptionAr}
+                  </p>
+                )}
+                <div className="mb-2 mt-4 flex flex-wrap items-center justify-between">
+                  <span className="me-4 text-lg font-semibold text-gray-900">
+                    {fmtPrice(detail.price, restaurant.currency)}{' '}
+                    <span className="text-xs font-medium text-gray-400">{restaurant.currency}</span>
+                  </span>
+                </div>
+              </div>
+
+              {/* Sticky action bar: quantity stepper + add to order */}
+              <div className="sticky bottom-0 z-40 mt-4 flex items-center rounded-b-xl bg-white px-4 pb-4 pt-4">
+                <div className="flex h-12 w-[7rem] shrink-0 items-center rounded-full border" style={{ borderColor: rgba(theme, 0.5) }}>
+                  <button onClick={() => setDetailQty((q) => Math.max(1, q - 1))} className="flex h-full flex-1 items-center justify-center" style={{ color: theme }}>
+                    <Minus size={16} />
+                  </button>
+                  <span className="min-w-[25px] px-1 text-center text-sm font-semibold text-gray-900">{detailQty}</span>
+                  <button onClick={() => setDetailQty((q) => q + 1)} className="flex h-full flex-1 items-center justify-center" style={{ color: theme }}>
+                    <Plus size={16} />
+                  </button>
+                </div>
+                <button
+                  onClick={() => {
+                    addToOrder(detail.id, detailQty);
+                    setDetail(null);
+                  }}
+                  className="ms-3 flex h-12 w-full items-center justify-center rounded-xl text-sm font-semibold transition-transform active:scale-[0.98] md:text-base"
+                  style={{ backgroundColor: theme, color: onTheme }}
+                >
+                  {isAr ? 'أضف إلى الطلب' : 'Add to order'} · {fmtPrice(detail.price * detailQty, restaurant.currency)}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ===== Order sheet ===== */}
+      {orderOpen && (
+        <div className="fixed inset-0 z-[65]" onClick={() => setOrderOpen(false)}>
+          <div className="animate-backdrop absolute inset-0 bg-white/50 backdrop-blur" />
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="animate-sheet-up absolute inset-x-0 bottom-0 mx-auto flex max-h-[85vh] max-w-md flex-col rounded-t-xl border-l border-r border-t border-gray-900/5 bg-white shadow-lift"
+          >
+            <div className="flex items-center justify-between p-4 pb-2">
+              <h3 className="font-sans text-lg font-semibold text-gray-900">{isAr ? 'طلبك' : 'Your order'}</h3>
+              <button onClick={() => setOrderOpen(false)} className="rounded-full p-1.5 text-gray-400 hover:bg-gray-50">
                 <X size={17} />
               </button>
             </div>
 
-            <div className="p-5">
-              <div className="flex items-start justify-between gap-3">
-                <h3 className="min-w-0 break-words font-sans text-xl font-semibold text-gray-900">
-                  {isAr ? detail.nameAr || detail.nameEn : detail.nameEn || detail.nameAr}
-                </h3>
-                <button
-                  onClick={() => toggleFavorite(detail.id)}
-                  className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full transition-colors"
-                  style={
-                    favorites.includes(detail.id)
-                      ? { backgroundColor: theme, color: onTheme }
-                      : { backgroundColor: primary10, color: theme }
-                  }
-                >
-                  <Heart size={18} fill={favorites.includes(detail.id) ? 'currentColor' : 'none'} />
-                </button>
-              </div>
-              {(detail.descriptionEn || detail.descriptionAr) && (
-                <p className="mt-1.5 whitespace-pre-line text-sm text-gray-500">
-                  {isAr ? detail.descriptionAr || detail.descriptionEn : detail.descriptionEn || detail.descriptionAr}
+            {orderRows.length === 0 ? (
+              <div className="flex flex-col items-center px-4 py-14 text-center text-gray-300">
+                <ShoppingBag size={36} />
+                <p className="mt-3 text-sm font-medium text-gray-400">
+                  {isAr ? 'لم تقم بإضافة أي عناصر بعد' : 'You have not added anything yet'}
                 </p>
-              )}
-              <div className="mb-1 mt-4 flex flex-wrap items-center justify-between">
-                <span className="me-4 text-lg font-semibold text-gray-900">
-                  {fmtPrice(detail.price, restaurant.currency)}{' '}
-                  <span className="text-xs font-medium text-gray-400">{restaurant.currency}</span>
-                </span>
               </div>
-            </div>
+            ) : (
+              <>
+                <div className="flex-1 overflow-y-auto px-4">
+                  {orderRows.map(({ item, qty }) => (
+                    <div key={item.id} className="flex items-center border-b border-gray-900/5 py-3 last:border-b-0">
+                      <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-md" style={{ backgroundColor: primary10 }}>
+                        {item.imageUrl ? (
+                          <img src={item.imageUrl} alt="" className="absolute inset-0 h-full w-full rounded-md object-cover object-center" />
+                        ) : (
+                          <span className="flex h-full items-center justify-center" style={{ color: theme }}><UtensilsCrossed size={20} /></span>
+                        )}
+                      </div>
+                      <div className="min-w-0 flex-1 px-3">
+                        <div className="truncate text-sm font-semibold text-gray-900">
+                          {isAr ? item.nameAr || item.nameEn : item.nameEn || item.nameAr}
+                        </div>
+                        <div className="mt-0.5 text-sm font-medium text-gray-500">
+                          {fmtPrice(item.price * qty, restaurant.currency)} <span className="text-[11px] text-gray-400">{restaurant.currency}</span>
+                        </div>
+                      </div>
+                      <div className="flex h-9 w-[5.5rem] shrink-0 items-center rounded-full border" style={{ borderColor: rgba(theme, 0.5) }}>
+                        <button onClick={() => setOrderQty(item.id, qty - 1)} className="flex h-full flex-1 items-center justify-center" style={{ color: theme }}>
+                          <Minus size={13} />
+                        </button>
+                        <span className="min-w-[20px] text-center text-xs font-semibold text-gray-900">{qty}</span>
+                        <button onClick={() => setOrderQty(item.id, qty + 1)} className="flex h-full flex-1 items-center justify-center" style={{ color: theme }}>
+                          <Plus size={13} />
+                        </button>
+                      </div>
+                      <button
+                        onClick={() => setOrderQty(item.id, 0)}
+                        className="ms-3 rounded p-1 text-gray-300 transition hover:text-red-500"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="border-t border-gray-900/10 p-4 pb-6">
+                  <div className="flex items-center justify-between">
+                    <span className="text-base font-semibold text-gray-900">{isAr ? 'المجموع' : 'Total'}</span>
+                    <span className="text-lg font-semibold" style={{ color: theme }}>
+                      {fmtPrice(orderTotal, restaurant.currency)} <span className="text-xs font-medium text-gray-400">{restaurant.currency}</span>
+                    </span>
+                  </div>
+                  <p className="mt-2 text-center text-xs text-gray-400">
+                    {isAr ? 'أظهر هذه القائمة للنادل لإتمام طلبك' : 'Show this list to your waiter to place the order'}
+                  </p>
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}
@@ -606,7 +769,7 @@ export default function PublicMenu() {
 }
 
 /* ---------- Product card: image with overlapping + button, flat body — reference style ---------- */
-function ProductCard({ item, theme, onTheme, primary10, isAr, currency, fav, onFav, onOpen }) {
+function ProductCard({ item, theme, onTheme, primary10, isAr, currency, fav, onFav, onOpen, onAdd }) {
   return (
     <div className="w-1/2 px-1.5 pb-5 md:w-1/3 lg:w-1/4 xl:w-1/5">
       <button onClick={onOpen} className="relative block w-full text-start">
@@ -631,10 +794,15 @@ function ProductCard({ item, theme, onTheme, primary10, isAr, currency, fav, onF
               {item.badgeText}
             </span>
           )}
-          {/* Overlapping circular + button */}
-          <span className="pointer-events-none absolute bottom-0.5 end-0.5 flex justify-end">
+          {/* Overlapping circular + button — quick add to order */}
+          <span className="absolute bottom-0.5 end-0.5 flex justify-end">
             <span
-              className="z-10 flex h-10 w-10 items-center justify-center rounded-full border-[3px] border-white"
+              role="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onAdd();
+              }}
+              className="z-10 flex h-10 w-10 items-center justify-center rounded-full border-[3px] border-white transition-transform active:scale-90"
               style={{ backgroundColor: theme, color: onTheme }}
             >
               <Plus size={18} />
