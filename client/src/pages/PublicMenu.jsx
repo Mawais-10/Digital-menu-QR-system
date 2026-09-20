@@ -794,6 +794,18 @@ function ProductCard({ item, theme, onTheme, primary10, isAr, currency, fav, onF
               {item.badgeText}
             </span>
           )}
+          {/* Favorite toggle on the photo */}
+          <span
+            role="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onFav();
+            }}
+            className="absolute end-1.5 top-1.5 z-10 flex h-8 w-8 items-center justify-center rounded-full bg-white/90 shadow-sm backdrop-blur transition-transform active:scale-90"
+            style={{ color: fav ? theme : '#9CA3AF' }}
+          >
+            <Heart size={15} fill={fav ? 'currentColor' : 'none'} />
+          </span>
           {/* Overlapping circular + button — quick add to order */}
           <span className="absolute bottom-0.5 end-0.5 flex justify-end">
             <span
