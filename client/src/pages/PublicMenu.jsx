@@ -216,8 +216,8 @@ export default function PublicMenu() {
 
   /* ================= WELCOME SCREEN ================= */
   if (screen === 'welcome') {
+    // Fixed overlay pinned to the viewport — the page itself can never grow a scrollbar
     return (
-      {/* Fixed overlay pinned to the viewport — the page itself can never grow a scrollbar */}
       <div
         dir={isAr ? 'rtl' : 'ltr'}
         className={`fixed inset-0 overflow-y-auto ${isAr ? 'font-arabic' : ''}`}
