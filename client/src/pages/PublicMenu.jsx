@@ -1,14 +1,12 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
-import { MapPin, Phone, X, UtensilsCrossed, SearchX, Navigation } from 'lucide-react';
+import {
+  Search, X, LayoutGrid, Heart, Info, MapPin, Phone, Navigation, UtensilsCrossed, Plus, SearchX,
+} from 'lucide-react';
 import { publicApi } from '../api/endpoints.js';
-import { Reveal, SmartImage } from '../components/motion.jsx';
+import { SmartImage } from '../components/motion.jsx';
 
 const fmtPrice = (n, currency = 'OMR') => Number(n).toFixed(currency === 'OMR' ? 3 : 2);
-
-// The price-tag orange from the reference menu (independent of the restaurant theme color)
-const TAG_GRADIENT = 'linear-gradient(180deg, #FBAB2C 0%, #F0870B 100%)';
-const RIBBON_GRADIENT = 'linear-gradient(180deg, #EF4444 0%, #C81E1E 100%)';
 
 // Foreground contrast for the theme color (guards very light brand colors)
 function readableOn(hex) {
@@ -22,24 +20,33 @@ function readableOn(hex) {
   }
 }
 
+function rgba(hex, a) {
+  try {
+    const c = hex.replace('#', '');
+    const full = c.length === 3 ? c.split('').map((x) => x + x).join('') : c;
+    const [r, g, b] = [0, 2, 4].map((i) => parseInt(full.slice(i, i + 2), 16));
+    return `rgba(${r}, ${g}, ${b}, ${a})`;
+  } catch {
+    return `rgba(249, 115, 22, ${a})`;
+  }
+}
+
 export default function PublicMenu() {
   const { slug } = useParams();
   const [data, setData] = useState(null);
   const [status, setStatus] = useState('loading'); // loading | ready | notfound
   const [lang, setLang] = useState('en');
+  const [screen, setScreen] = useState('welcome'); // welcome | menu
+  const [tab, setTab] = useState('menu'); // menu | favorites
+  const [infoOpen, setInfoOpen] = useState(false);
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [search, setSearch] = useState('');
   const [activeCat, setActiveCat] = useState(null);
   const [detail, setDetail] = useState(null);
-  const [scrolled, setScrolled] = useState(false);
+  const [favorites, setFavorites] = useState([]);
   const sectionRefs = useRef({});
-  const pillRefs = useRef({});
+  const tabRefs = useRef({});
   const clickScrolling = useRef(false);
-
-  // Condense the sticky bar with a mini logo once the header is out of view
-  useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 190);
-    window.addEventListener('scroll', onScroll, { passive: true });
-    return () => window.removeEventListener('scroll', onScroll);
-  }, []);
 
   useEffect(() => {
     publicApi
@@ -49,6 +56,11 @@ export default function PublicMenu() {
         const saved = localStorage.getItem(`qm_lang_${slug}`);
         setLang(saved === 'ar' || saved === 'en' ? saved : data.restaurant.defaultLanguage);
         setActiveCat(data.categories[0]?.id || null);
+        try {
+          setFavorites(JSON.parse(localStorage.getItem(`qm_fav_${slug}`) || '[]'));
+        } catch {
+          setFavorites([]);
+        }
         setStatus('ready');
         document.title = `${data.restaurant.nameEn} — Menu`;
       })
@@ -60,9 +72,24 @@ export default function PublicMenu() {
     localStorage.setItem(`qm_lang_${slug}`, l);
   };
 
+  const toggleFavorite = useCallback(
+    (id) => {
+      setFavorites((prev) => {
+        const next = prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id];
+        localStorage.setItem(`qm_fav_${slug}`, JSON.stringify(next));
+        return next;
+      });
+    },
+    [slug]
+  );
+
   const isAr = lang === 'ar';
   const theme = data?.restaurant.themeColor || '#F97316';
   const onTheme = readableOn(theme);
+  const name = useCallback(
+    (obj, en, ar) => (isAr ? obj[ar] || obj[en] : obj[en] || obj[ar]),
+    [isAr]
+  );
 
   const itemsByCat = useMemo(() => {
     if (!data) return new Map();
@@ -75,9 +102,26 @@ export default function PublicMenu() {
     return map;
   }, [data]);
 
-  // Scrollspy — highlight the category currently in view
+  const searchResults = useMemo(() => {
+    if (!data || !search.trim()) return null;
+    const q = search.trim().toLowerCase();
+    return data.items.filter(
+      (i) =>
+        i.nameEn?.toLowerCase().includes(q) ||
+        i.nameAr?.includes(search.trim()) ||
+        i.descriptionEn?.toLowerCase().includes(q) ||
+        i.descriptionAr?.includes(search.trim())
+    );
+  }, [data, search]);
+
+  const favoriteItems = useMemo(
+    () => (data ? data.items.filter((i) => favorites.includes(i.id)) : []),
+    [data, favorites]
+  );
+
+  // Scrollspy — highlight the category tab currently in view
   useEffect(() => {
-    if (status !== 'ready' || !data) return;
+    if (status !== 'ready' || !data || screen !== 'menu' || tab !== 'menu' || search) return;
     const observer = new IntersectionObserver(
       (entries) => {
         if (clickScrolling.current) return;
@@ -87,303 +131,470 @@ export default function PublicMenu() {
           setActiveCat(top.target.dataset.cat);
         }
       },
-      { rootMargin: '-120px 0px -55% 0px' }
+      { rootMargin: '-130px 0px -55% 0px' }
     );
     Object.values(sectionRefs.current).forEach((el) => el && observer.observe(el));
     return () => observer.disconnect();
-  }, [status, data, lang]);
+  }, [status, data, lang, screen, tab, search]);
 
   useEffect(() => {
-    pillRefs.current[activeCat]?.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+    tabRefs.current[activeCat]?.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
   }, [activeCat]);
 
   const scrollToCat = (id) => {
+    setSearch('');
+    setTab('menu');
     setActiveCat(id);
+    setDrawerOpen(false);
     clickScrolling.current = true;
-    sectionRefs.current[id]?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    setTimeout(() => (clickScrolling.current = false), 700);
+    requestAnimationFrame(() => {
+      sectionRefs.current[id]?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      setTimeout(() => (clickScrolling.current = false), 700);
+    });
   };
 
   if (status === 'loading') return <MenuSkeleton />;
   if (status === 'notfound') return <NotFound />;
 
   const { restaurant, branch, categories } = data;
-  const name = (obj, en, ar) => (isAr ? obj[ar] || obj[en] : obj[en] || obj[ar]);
+  const primary10 = rgba(theme, 0.08);
+  const primary20 = rgba(theme, 0.18);
 
-  return (
-    <div
-      dir={isAr ? 'rtl' : 'ltr'}
-      className={`pattern-arabesque min-h-screen pb-10 ${isAr ? 'font-arabic' : ''}`}
-      style={{ '--brand': theme, backgroundColor: '#FAF8F5' }}
-    >
-      {/* ===== Cover-style header (like the printed menu front page) ===== */}
-      <header className="relative pb-6 pt-6 text-center">
-        {/* Language toggle */}
-        <div className="absolute end-4 top-4 z-10">
-          <div className="flex rounded-full bg-white p-1 shadow-soft ring-1 ring-black/5">
+  /* ================= WELCOME SCREEN ================= */
+  if (screen === 'welcome') {
+    return (
+      <div
+        dir={isAr ? 'rtl' : 'ltr'}
+        className={`relative flex min-h-screen flex-col justify-end overflow-hidden ${isAr ? 'font-arabic' : ''}`}
+        style={{ background: `linear-gradient(180deg, ${theme} 0%, ${rgba(theme, 0.85)} 60%, ${rgba('#000000', 0.9)} 160%)` }}
+      >
+        <div className="pattern-arabesque absolute inset-0 opacity-30" />
+
+        {/* Brand block, centered */}
+        <div className="relative flex flex-1 flex-col items-center justify-center px-6 text-center" style={{ color: onTheme }}>
+          {restaurant.logoUrl ? (
+            <SmartImage
+              src={restaurant.logoUrl}
+              alt={restaurant.nameEn}
+              eager
+              className="w-fit overflow-hidden rounded-2xl"
+              imgClassName="h-32 w-auto max-w-[320px] object-contain drop-shadow-xl"
+            />
+          ) : (
+            <div className="flex h-28 w-28 items-center justify-center rounded-3xl bg-white/15 text-6xl font-extrabold backdrop-blur">
+              {restaurant.nameEn[0]}
+            </div>
+          )}
+          <h1 className="mt-6 break-words font-sans text-3xl font-bold tracking-tight">{name(restaurant, 'nameEn', 'nameAr')}</h1>
+          {(restaurant.taglineEn || restaurant.taglineAr) && (
+            <p className="mt-2 max-w-xs text-sm font-medium opacity-85">{name(restaurant, 'taglineEn', 'taglineAr')}</p>
+          )}
+          <span className="mt-4 inline-flex items-center gap-1.5 rounded-full bg-black/15 px-4 py-1.5 text-xs font-semibold backdrop-blur">
+            <MapPin size={12} />
+            {name(branch, 'nameEn', 'nameAr')}
+          </span>
+        </div>
+
+        {/* Language circles + view menu */}
+        <div className="relative px-5 pb-8" style={{ color: onTheme }}>
+          <div className="mb-4 flex items-center justify-center gap-3">
             {[
               { v: 'en', label: 'EN' },
-              { v: 'ar', label: 'عربي' },
+              { v: 'ar', label: 'ع' },
             ].map(({ v, label }) => (
               <button
                 key={v}
                 onClick={() => switchLang(v)}
-                className={`rounded-full px-3.5 py-1.5 text-xs font-bold transition-all ${v === 'ar' ? 'font-arabic' : ''}`}
-                style={lang === v ? { backgroundColor: theme, color: onTheme } : { color: '#6B7280' }}
+                className={`flex h-10 w-10 items-center justify-center rounded-full text-sm font-semibold transition-all ${v === 'ar' ? 'font-arabic' : ''}`}
+                style={
+                  lang === v
+                    ? { backgroundColor: '#fff', color: theme }
+                    : { backgroundColor: 'rgba(255,255,255,0.12)', color: onTheme }
+                }
               >
                 {label}
               </button>
             ))}
           </div>
+          <button
+            onClick={() => setScreen('menu')}
+            className="flex h-12 w-full items-center justify-center rounded-xl bg-white text-base font-semibold shadow-lift transition-transform active:scale-[0.98]"
+            style={{ color: theme }}
+          >
+            {isAr ? 'عرض القائمة' : 'View Menu'}
+          </button>
         </div>
+      </div>
+    );
+  }
 
-        <div className="mx-auto max-w-lg px-6">
-          <Reveal>
-            {restaurant.logoUrl ? (
-              // Logo shown as-is — no circle crop, wide wordmark logos stay complete
-              <SmartImage
-                src={restaurant.logoUrl}
-                alt={restaurant.nameEn}
-                eager
-                className="mx-auto w-fit overflow-hidden rounded-xl"
-                imgClassName="h-24 w-auto max-w-[300px] object-contain"
-              />
-            ) : (
-              <div
-                className="mx-auto flex h-24 w-24 items-center justify-center rounded-full border-4 border-white text-4xl font-extrabold shadow-lift"
-                style={{ backgroundColor: theme, color: onTheme }}
-              >
-                {restaurant.nameEn[0]}
-              </div>
-            )}
-          </Reveal>
+  /* ================= MENU SCREEN ================= */
+  const showSections = tab === 'menu' && !search;
+  const gridItems = search ? searchResults : tab === 'favorites' ? favoriteItems : null;
 
-          <Reveal delay={90}>
-            <h1 className={`mt-4 text-3xl font-extrabold tracking-tight ${isAr ? '' : 'uppercase'}`} style={{ color: theme }}>
-              {name(restaurant, 'nameEn', 'nameAr')}
-            </h1>
-          </Reveal>
-
-          {/* Bilingual tagline with the dashed decoration from the reference cover */}
-          {(restaurant.taglineEn || restaurant.taglineAr) && (
-            <Reveal delay={170}>
-              <div className="mt-3 flex items-center justify-center gap-3">
-                <span className="h-px w-10 bg-gray-300" />
-                <p
-                  className={
-                    isAr
-                      ? 'font-arabic text-sm font-bold text-gray-600'
-                      : 'font-sans text-[11px] font-bold uppercase tracking-[0.2em] text-gray-500'
-                  }
-                >
-                  {name(restaurant, 'taglineEn', 'taglineAr')}
-                </p>
-                <span className="h-px w-10 bg-gray-300" />
-              </div>
-            </Reveal>
+  return (
+    <div dir={isAr ? 'rtl' : 'ltr'} className={`min-h-screen bg-white pb-24 text-gray-800 ${isAr ? 'font-arabic' : ''}`}>
+      {/* Top row: language pill */}
+      <div className="flex h-12 items-center justify-between px-4 pt-2">
+        <button
+          onClick={() => setScreen('welcome')}
+          className="flex h-8 w-8 items-center justify-center rounded-full transition-colors hover:bg-gray-50"
+          title={restaurant.nameEn}
+        >
+          {restaurant.logoUrl ? (
+            <img src={restaurant.logoUrl} alt="" className="h-7 w-auto max-w-[60px] rounded object-contain" />
+          ) : (
+            <span className="text-sm font-bold" style={{ color: theme }}>{restaurant.nameEn[0]}</span>
           )}
+        </button>
+        <button
+          onClick={() => switchLang(isAr ? 'en' : 'ar')}
+          className="flex h-8 items-center gap-1.5 rounded-full border border-gray-300 px-3 text-xs font-semibold text-gray-700 transition-colors active:bg-gray-50"
+        >
+          {isAr ? 'English' : <span className="font-arabic">عربي</span>}
+        </button>
+      </div>
 
-          <Reveal delay={240}>
-            <span className="mt-3.5 inline-flex items-center gap-1.5 rounded-full bg-white px-4 py-1.5 text-xs font-bold text-gray-600 shadow-soft ring-1 ring-black/5">
-              <MapPin size={12} style={{ color: theme }} />
-              {name(branch, 'nameEn', 'nameAr')}
-            </span>
-          </Reveal>
-        </div>
-      </header>
-
-      {/* ===== Sticky category pills ===== */}
-      <nav className="sticky top-0 z-20 border-b border-black/5 py-2.5 backdrop-blur" style={{ backgroundColor: '#FAF8F5EE' }}>
-        <div className="mx-auto max-w-2xl px-3.5">
-          {/* Segmented control container */}
-          <div className="no-scrollbar flex items-center gap-1 overflow-x-auto rounded-2xl bg-white p-1.5 shadow-soft ring-1 ring-black/5">
-            {/* Mini logo slides in once the header scrolls away */}
+      {/* Cover banner — blurred fill + sharp logo, like the reference */}
+      <div className="mx-4 mt-1">
+        <div className="relative h-36 w-full overflow-hidden rounded-xl" style={{ backgroundColor: primary10 }}>
+          {restaurant.logoUrl && (
             <div
-              className={`shrink-0 overflow-hidden transition-all duration-300 ease-out ${
-                scrolled ? 'me-1 max-w-[90px] opacity-100' : 'max-w-0 opacity-0'
-              }`}
-            >
-              {restaurant.logoUrl ? (
-                <img src={restaurant.logoUrl} alt="" className="h-8 w-auto max-w-[86px] rounded-md object-contain" />
-              ) : (
-                <div
-                  className="flex h-8 w-8 items-center justify-center rounded-full text-sm font-extrabold"
-                  style={{ backgroundColor: theme, color: onTheme }}
-                >
-                  {restaurant.nameEn[0]}
-                </div>
-              )}
-            </div>
-            {categories.map((c) => (
-              <button
-                key={c.id}
-                ref={(el) => (pillRefs.current[c.id] = el)}
-                onClick={() => scrollToCat(c.id)}
-                className="shrink-0 rounded-xl px-4 py-2 text-sm font-bold transition-all duration-300"
-                style={
-                  activeCat === c.id
-                    ? { backgroundColor: theme, color: onTheme, boxShadow: `0 4px 12px ${theme}4D` }
-                    : { color: '#4B5563' }
-                }
-              >
-                {name(c, 'nameEn', 'nameAr')}
-              </button>
-            ))}
+              className="absolute inset-0 scale-125 bg-center bg-no-repeat opacity-60 blur-2xl"
+              style={{ backgroundImage: `url(${restaurant.logoUrl})`, backgroundSize: '55%' }}
+            />
+          )}
+          <div className="pattern-arabesque absolute inset-0 opacity-40" />
+          <div className="relative z-20 flex h-full items-center justify-center">
+            {restaurant.logoUrl ? (
+              <img src={restaurant.logoUrl} alt={restaurant.nameEn} className="h-24 w-auto max-w-[70%] object-contain drop-shadow" />
+            ) : (
+              <UtensilsCrossed size={40} style={{ color: theme }} />
+            )}
           </div>
         </div>
-      </nav>
+      </div>
 
-      {/* ===== Sections ===== */}
-      <main key={lang} className="animate-fade-in mx-auto max-w-2xl px-3.5">
-        {categories.map((c) => {
+      {/* Restaurant name + description */}
+      <div className="mt-5 px-4 text-center">
+        <h1 className="break-words font-sans text-xl font-semibold text-gray-900">{name(restaurant, 'nameEn', 'nameAr')}</h1>
+        {(restaurant.taglineEn || restaurant.taglineAr) && (
+          <p className="mt-1 break-words text-sm text-gray-500">{name(restaurant, 'taglineEn', 'taglineAr')}</p>
+        )}
+      </div>
+
+      {/* Sticky: search + category tabs */}
+      <div className="sticky top-0 z-30 mt-4 bg-white">
+        <div className="px-4 pt-2">
+          <div className="relative h-10 overflow-hidden rounded-full">
+            <input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder={isAr ? 'ابحث في القائمة...' : 'Search the menu...'}
+              className="block h-full w-full rounded-full border-none pe-9 ps-10 text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-0"
+              style={{ backgroundColor: primary10 }}
+            />
+            <span className="absolute bottom-0 start-0 top-0 flex h-10 w-10 items-center justify-center">
+              <Search size={17} style={{ color: theme }} />
+            </span>
+            {search && (
+              <button
+                onClick={() => setSearch('')}
+                className="absolute bottom-0 end-0 top-0 flex h-10 w-9 items-center justify-center text-gray-400"
+              >
+                <X size={16} />
+              </button>
+            )}
+          </div>
+        </div>
+
+        <div className="relative mt-2">
+          <div className="flex h-12 items-center">
+            <button
+              onClick={() => setDrawerOpen(true)}
+              className="flex h-full w-12 flex-shrink-0 items-center justify-center focus:outline-none"
+              title="All categories"
+            >
+              <LayoutGrid size={19} style={{ color: theme }} />
+            </button>
+            <div className="no-scrollbar relative flex h-full flex-1 items-center overflow-x-auto pe-4">
+              {categories.map((c) => {
+                const active = activeCat === c.id && showSections;
+                return (
+                  <button
+                    key={c.id}
+                    ref={(el) => (tabRefs.current[c.id] = el)}
+                    onClick={() => scrollToCat(c.id)}
+                    className="relative me-2 touch-manipulation whitespace-nowrap rounded-lg px-3 py-1.5 text-sm font-medium transition"
+                    style={
+                      active
+                        ? { backgroundColor: theme, color: onTheme }
+                        : { backgroundColor: 'rgba(0,0,0,0.03)', color: '#374151' }
+                    }
+                  >
+                    {name(c, 'nameEn', 'nameAr')}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+          <div className="absolute bottom-0 left-0 right-0 border-t border-gray-900/5" />
+        </div>
+      </div>
+
+      {/* ===== Content ===== */}
+      {showSections ? (
+        categories.map((c) => {
           const catItems = itemsByCat.get(c.id) || [];
-          const layout = c.layout || 'grid';
-          const { Comp: CardComp, wrap: wrapClass } = LAYOUT_CONFIG[layout] || LAYOUT_CONFIG.grid;
           return (
             <section
               key={c.id}
               data-cat={c.id}
               ref={(el) => (sectionRefs.current[c.id] = el)}
-              className="cv-auto scroll-mt-20 pt-6"
+              className="cv-auto scroll-mt-32 px-4 pt-5"
             >
-              {/* Section title — banner style, like a category divider in the printed menu */}
+              {/* Category banner: soft gradient block with a name chip, exactly like the reference */}
               <div
-                className="mb-3 flex items-center justify-center rounded-lg px-4 py-2 shadow-sm"
-                style={{ backgroundColor: theme, color: onTheme }}
+                className="relative mb-3 flex h-20 shrink-0 flex-col items-start justify-end overflow-hidden rounded-md font-medium"
+                style={{ background: `linear-gradient(to top, ${primary20}, ${primary10})` }}
               >
-                <span className={`font-extrabold ${isAr ? 'font-arabic text-[15px]' : 'text-sm uppercase tracking-wider'}`}>
+                <span className="z-10 mx-2 mb-2 mt-2 block rounded bg-white px-2.5 py-1 font-sans text-sm font-semibold text-gray-800 shadow-sm">
                   {name(c, 'nameEn', 'nameAr')}
                 </span>
               </div>
 
-              <div className={wrapClass}>
+              <div className="-mx-1.5 flex flex-wrap">
                 {catItems.map((item) => (
-                  <CardComp
+                  <ProductCard
                     key={item.id}
                     item={item}
                     theme={theme}
                     onTheme={onTheme}
+                    primary10={primary10}
                     isAr={isAr}
                     currency={restaurant.currency}
+                    fav={favorites.includes(item.id)}
+                    onFav={() => toggleFavorite(item.id)}
                     onOpen={() => setDetail(item)}
                   />
                 ))}
               </div>
             </section>
           );
-        })}
+        })
+      ) : (
+        /* Search results or favorites */
+        <div className="px-4 pt-5">
+          <p className="mb-3 text-sm font-medium text-gray-500">
+            {search
+              ? isAr
+                ? `${gridItems.length} نتيجة`
+                : `${gridItems.length} result${gridItems.length === 1 ? '' : 's'}`
+              : isAr
+                ? 'المفضلة'
+                : 'Favorites'}
+          </p>
+          {gridItems.length === 0 ? (
+            <div className="flex flex-col items-center py-16 text-center text-gray-300">
+              {search ? <SearchX size={36} /> : <Heart size={36} />}
+              <p className="mt-3 text-sm font-medium text-gray-400">
+                {search ? (isAr ? 'لا توجد نتائج' : 'Nothing found') : isAr ? 'لا توجد عناصر مفضلة بعد' : 'No favorites yet'}
+              </p>
+            </div>
+          ) : (
+            <div className="-mx-1.5 flex flex-wrap">
+              {gridItems.map((item) => (
+                <ProductCard
+                  key={item.id}
+                  item={item}
+                  theme={theme}
+                  onTheme={onTheme}
+                  primary10={primary10}
+                  isAr={isAr}
+                  currency={restaurant.currency}
+                  fav={favorites.includes(item.id)}
+                  onFav={() => toggleFavorite(item.id)}
+                  onOpen={() => setDetail(item)}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
-        {data.items.length === 0 && (
-          <div className="flex flex-col items-center py-20 text-center text-gray-400">
-            <UtensilsCrossed size={36} />
-            <p className="mt-3 text-sm font-medium">{isAr ? 'القائمة قيد التحضير' : 'Menu coming soon'}</p>
-          </div>
-        )}
+      {/* Footer */}
+      <div className="mx-auto mt-10 max-w-xs pb-4 text-center text-sm text-gray-400">
+        Powered by <span className="font-semibold text-gray-500">Simat</span>
+      </div>
 
-        {/* ===== Footer — contact chips like the cover page ===== */}
-        <footer className="mt-12 border-t border-black/5 pt-6 text-center">
-          {(branch.address || branch.phone || branch.mapLink) && (
-            <div className="mb-5 flex flex-wrap items-center justify-center gap-2.5">
-              {branch.mapLink ? (
-                // Tappable — opens the maps app with directions to the branch
+      {/* ===== Bottom tab bar ===== */}
+      <nav className="fixed inset-x-0 bottom-0 z-40 flex justify-center">
+        <div className="flex w-full max-w-md rounded-t-xl border-l border-r border-t border-gray-900/5 bg-white/90 backdrop-blur">
+          {[
+            { id: 'menu', icon: UtensilsCrossed, label: isAr ? 'القائمة' : 'Menu', onClick: () => { setTab('menu'); setSearch(''); window.scrollTo({ top: 0 }); } },
+            { id: 'favorites', icon: Heart, label: isAr ? 'المفضلة' : 'Favorites', onClick: () => { setTab('favorites'); setSearch(''); window.scrollTo({ top: 0 }); }, count: favorites.length },
+            { id: 'info', icon: Info, label: isAr ? 'معلومات' : 'Info', onClick: () => setInfoOpen(true) },
+          ].map(({ id, icon: Icon, label, onClick, count }) => {
+            const active = id === 'info' ? infoOpen : tab === id && !infoOpen;
+            return (
+              <button key={id} onClick={onClick} className="flex min-w-[4rem] flex-1 cursor-pointer flex-col items-center py-2 transition">
+                <span className="relative">
+                  <Icon size={21} style={{ color: active ? theme : '#9CA3AF' }} fill={id === 'favorites' && count > 0 ? theme : 'none'} strokeWidth={id === 'favorites' && count > 0 ? 0 : 2} />
+                  {id === 'favorites' && count > 0 && (
+                    <span
+                      className="absolute -end-2 -top-1.5 flex min-h-[17px] min-w-[17px] items-center justify-center rounded-full px-1 text-[10px] font-semibold"
+                      style={{ backgroundColor: theme, color: onTheme }}
+                    >
+                      {count}
+                    </span>
+                  )}
+                </span>
+                <span className="mt-1 text-center text-xs font-medium" style={{ color: active ? theme : '#9CA3AF' }}>
+                  {label}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </nav>
+
+      {/* ===== Category drawer ===== */}
+      {drawerOpen && (
+        <div className="fixed inset-0 z-[60]">
+          <div className="animate-backdrop absolute inset-0 bg-white/50 backdrop-blur" onClick={() => setDrawerOpen(false)} />
+          <aside className="animate-fade-in absolute top-0 flex h-screen w-64 max-w-[calc(100vw-100px)] flex-col bg-white shadow-xl start-0">
+            <div className="flex items-center justify-between px-4 py-4">
+              <span className="font-sans text-base font-semibold text-gray-900">{isAr ? 'الفئات' : 'Categories'}</span>
+              <button onClick={() => setDrawerOpen(false)} className="rounded-full p-1.5 text-gray-400 hover:bg-gray-50">
+                <X size={17} />
+              </button>
+            </div>
+            <div className="flex flex-1 flex-col overflow-y-auto px-3 pb-10">
+              {categories.map((c) => (
+                <button
+                  key={c.id}
+                  onClick={() => scrollToCat(c.id)}
+                  className="flex items-center justify-between rounded-lg px-3 py-3 text-start text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50"
+                >
+                  {name(c, 'nameEn', 'nameAr')}
+                  <span
+                    className="flex h-7 w-7 items-center justify-center rounded-full text-xs font-semibold"
+                    style={{ backgroundColor: primary10, color: theme }}
+                  >
+                    {(itemsByCat.get(c.id) || []).length}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </aside>
+        </div>
+      )}
+
+      {/* ===== Info sheet ===== */}
+      {infoOpen && (
+        <div className="fixed inset-0 z-[60]" onClick={() => setInfoOpen(false)}>
+          <div className="animate-backdrop absolute inset-0 bg-white/50 backdrop-blur" />
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="animate-sheet-up absolute inset-x-0 bottom-0 mx-auto max-w-md rounded-t-xl border-l border-r border-t border-gray-900/5 bg-white p-5 pb-8 shadow-lift"
+          >
+            <div className="mb-4 flex items-center justify-between">
+              <h3 className="font-sans text-lg font-semibold text-gray-900">{name(branch, 'nameEn', 'nameAr')}</h3>
+              <button onClick={() => setInfoOpen(false)} className="rounded-full p-1.5 text-gray-400 hover:bg-gray-50">
+                <X size={17} />
+              </button>
+            </div>
+            <div className="space-y-2.5">
+              {branch.address && (
+                <div className="flex items-start gap-3 rounded-xl px-3.5 py-3" style={{ backgroundColor: primary10 }}>
+                  <MapPin size={17} className="mt-0.5 shrink-0" style={{ color: theme }} />
+                  <span className="text-sm text-gray-700">{branch.address}</span>
+                </div>
+              )}
+              {branch.mapLink && (
                 <a
                   href={branch.mapLink}
                   target="_blank"
                   rel="noreferrer"
-                  className="inline-flex items-center gap-2 rounded-xl bg-white px-4 py-2 text-xs font-semibold text-gray-600 shadow-soft ring-1 ring-black/5 transition-all active:scale-[0.97]"
+                  className="flex h-11 items-center justify-center gap-2 rounded-xl text-sm font-semibold transition-transform active:scale-[0.98]"
+                  style={{ backgroundColor: theme, color: onTheme }}
                 >
-                  <MapPin size={13} style={{ color: theme }} />
-                  {branch.address || (isAr ? 'موقع الفرع' : 'Branch location')}
-                  <span
-                    className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[10px] font-extrabold text-white"
-                    style={{ backgroundColor: theme, color: onTheme }}
-                  >
-                    <Navigation size={10} />
-                    {isAr ? 'الاتجاهات' : 'Directions'}
-                  </span>
+                  <Navigation size={15} /> {isAr ? 'الاتجاهات' : 'Get Directions'}
                 </a>
-              ) : (
-                branch.address && (
-                  <span className="inline-flex items-center gap-1.5 rounded-xl bg-white px-4 py-2 text-xs font-semibold text-gray-600 shadow-soft ring-1 ring-black/5">
-                    <MapPin size={13} style={{ color: theme }} />{branch.address}
-                  </span>
-                )
               )}
               {branch.phone && (
                 <a
                   href={`tel:${branch.phone}`}
-                  className="inline-flex items-center gap-1.5 rounded-xl bg-white px-4 py-2 text-xs font-bold shadow-soft ring-1 ring-black/5 transition-all active:scale-[0.97]"
-                  style={{ color: theme }}
+                  className="flex h-11 items-center justify-center gap-2 rounded-xl border border-gray-200 text-sm font-semibold text-gray-700 transition-colors active:bg-gray-50"
                 >
-                  <Phone size={13} />{branch.phone}
+                  <Phone size={15} /> {branch.phone}
                 </a>
               )}
             </div>
-          )}
-          <p className="pb-2 text-[11px] font-medium tracking-wide text-gray-300">
-            Powered by <span className="font-bold text-gray-400">Simat</span>
-          </p>
-        </footer>
-      </main>
+          </div>
+        </div>
+      )}
 
-      {/* ===== Item detail bottom sheet ===== */}
+      {/* ===== Product detail modal ===== */}
       {detail && (
-        <div className="fixed inset-0 z-50" onClick={() => setDetail(null)}>
-          <div className="animate-backdrop absolute inset-0 bg-gray-900/55 backdrop-blur-[2px]" />
+        <div
+          className="fixed inset-0 z-[70] flex items-end justify-center overflow-y-auto bg-white/50 p-0 backdrop-blur sm:items-center sm:p-6"
+          onClick={() => setDetail(null)}
+        >
           <div
             onClick={(e) => e.stopPropagation()}
-            className="animate-sheet-up absolute inset-x-0 bottom-0 mx-auto max-h-[88vh] max-w-lg overflow-y-auto rounded-t-3xl bg-white shadow-lift"
+            className="animate-pop w-[550px] max-w-full shrink-0 overflow-hidden rounded-t-xl bg-white shadow-lg sm:rounded-xl"
           >
-            <div className="sticky top-0 z-10 flex justify-center bg-gradient-to-b from-white to-transparent pb-1 pt-2.5">
-              <div className="h-1 w-10 rounded-full bg-gray-200" />
-            </div>
-            <button
-              onClick={() => setDetail(null)}
-              className="absolute end-3.5 top-3.5 z-20 rounded-full bg-gray-900/60 p-2 text-white backdrop-blur"
-            >
-              <X size={16} />
-            </button>
-
-            {/* Banner inside the sheet, matching the card style */}
-            <div className="flex items-center justify-center px-10 py-3" style={{ backgroundColor: theme, color: onTheme }}>
-              <span className={`truncate font-extrabold ${isAr ? 'font-arabic text-lg' : 'text-base uppercase tracking-wide'}`}>
-                {isAr ? detail.nameAr || detail.nameEn : detail.nameEn || detail.nameAr}
-              </span>
-            </div>
-
-            {detail.imageUrl ? (
-              <div className="pattern-arabesque bg-white p-3">
-                <SmartImage src={detail.imageUrl} alt="" eager className="w-full" imgClassName="mx-auto aspect-[16/10] w-full object-contain" />
-              </div>
-            ) : (
-              <div className="pattern-arabesque flex aspect-[16/9] items-center justify-center bg-white text-gray-200">
-                <UtensilsCrossed size={44} />
-              </div>
-            )}
-
-            <div className="p-5 pb-8">
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  {(detail.descriptionEn || detail.descriptionAr) && (
-                    <p className="text-sm leading-relaxed text-gray-600">
-                      {isAr ? detail.descriptionAr || detail.descriptionEn : detail.descriptionEn || detail.descriptionAr}
-                    </p>
-                  )}
-                  {detail.badgeText && (
-                    <span
-                      className="mt-3 inline-block rounded-md px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-wider text-white"
-                      style={{ background: RIBBON_GRADIENT }}
-                    >
-                      {detail.badgeText}
-                    </span>
-                  )}
+            <div className="relative">
+              {detail.imageUrl ? (
+                <SmartImage src={detail.imageUrl} alt="" eager className="w-full" imgClassName="aspect-[4/3] w-full object-cover" />
+              ) : (
+                <div className="flex aspect-[16/9] items-center justify-center" style={{ backgroundColor: primary10 }}>
+                  <UtensilsCrossed size={40} style={{ color: theme }} />
                 </div>
+              )}
+              {detail.badgeText && (
                 <span
-                  className="flex shrink-0 flex-col items-center rounded-xl px-4 py-2 text-white shadow-md"
-                  style={{ background: TAG_GRADIENT }}
+                  className="absolute start-3 top-3 rounded-md px-2.5 py-1 text-xs font-semibold shadow-sm"
+                  style={{ backgroundColor: theme, color: onTheme }}
                 >
-                  <span className="text-lg font-extrabold leading-tight">{fmtPrice(detail.price, restaurant.currency)}</span>
-                  <span className="text-[9px] font-bold uppercase tracking-wider opacity-90">{restaurant.currency}</span>
+                  {detail.badgeText}
+                </span>
+              )}
+              <button
+                onClick={() => setDetail(null)}
+                className="absolute end-3 top-3 z-20 flex h-9 w-9 items-center justify-center rounded-full bg-white/90 text-gray-600 shadow-sm backdrop-blur"
+              >
+                <X size={17} />
+              </button>
+            </div>
+
+            <div className="p-5">
+              <div className="flex items-start justify-between gap-3">
+                <h3 className="min-w-0 break-words font-sans text-xl font-semibold text-gray-900">
+                  {isAr ? detail.nameAr || detail.nameEn : detail.nameEn || detail.nameAr}
+                </h3>
+                <button
+                  onClick={() => toggleFavorite(detail.id)}
+                  className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full transition-colors"
+                  style={
+                    favorites.includes(detail.id)
+                      ? { backgroundColor: theme, color: onTheme }
+                      : { backgroundColor: primary10, color: theme }
+                  }
+                >
+                  <Heart size={18} fill={favorites.includes(detail.id) ? 'currentColor' : 'none'} />
+                </button>
+              </div>
+              {(detail.descriptionEn || detail.descriptionAr) && (
+                <p className="mt-1.5 whitespace-pre-line text-sm text-gray-500">
+                  {isAr ? detail.descriptionAr || detail.descriptionEn : detail.descriptionEn || detail.descriptionAr}
+                </p>
+              )}
+              <div className="mb-1 mt-4 flex flex-wrap items-center justify-between">
+                <span className="me-4 text-lg font-semibold text-gray-900">
+                  {fmtPrice(detail.price, restaurant.currency)}{' '}
+                  <span className="text-xs font-medium text-gray-400">{restaurant.currency}</span>
                 </span>
               </div>
             </div>
@@ -394,299 +605,87 @@ export default function PublicMenu() {
   );
 }
 
-/* ---------- Layout registry ---------- */
-const LAYOUT_CONFIG = {
-  grid: { get Comp() { return GridCard; }, wrap: 'grid grid-cols-2 gap-3' },
-  large: { get Comp() { return LargeCard; }, wrap: 'space-y-3.5' },
-  compact: { get Comp() { return CompactCard; }, wrap: 'grid grid-cols-3 gap-2.5' },
-  list: { get Comp() { return ListCard; }, wrap: 'space-y-2.5' },
-  hero: { get Comp() { return HeroCard; }, wrap: 'space-y-4' },
-  minimal: { get Comp() { return MinimalCard; }, wrap: 'grid grid-cols-2 gap-3' },
-};
-
-/* ---------- Shared card pieces ---------- */
-
-// Red "NEW"-style ribbon, top corner, slightly tilted like the printed menu
-function Ribbon({ text, small }) {
+/* ---------- Product card: image with overlapping + button, flat body — reference style ---------- */
+function ProductCard({ item, theme, onTheme, primary10, isAr, currency, fav, onFav, onOpen }) {
   return (
-    <span
-      className={`absolute end-1.5 top-1.5 z-10 rotate-6 rounded-md text-white shadow-md ${
-        small ? 'px-1.5 py-0.5 text-[8px]' : 'px-2.5 py-1 text-[10px]'
-      } font-extrabold uppercase tracking-wider`}
-      style={{ background: RIBBON_GRADIENT }}
-    >
-      {text}
-    </span>
-  );
-}
-
-// Orange price tag (number + OMR beneath) — the reference menu's signature tag
-function PriceTag({ price, currency, small }) {
-  return (
-    <span
-      className={`absolute bottom-1.5 end-1.5 flex flex-col items-center rounded-lg text-white shadow-md ${
-        small ? 'px-1.5 py-0.5' : 'px-2.5 py-1'
-      }`}
-      style={{ background: TAG_GRADIENT }}
-    >
-      <span className={`${small ? 'text-[11px]' : 'text-sm'} font-extrabold leading-tight`}>{fmtPrice(price, currency)}</span>
-      <span className={`${small ? 'text-[6px]' : 'text-[8px]'} font-bold uppercase tracking-wider leading-none opacity-90`}>{currency}</span>
-    </span>
-  );
-}
-
-/* ---------- Standard card (2 per row) — main reference template ---------- */
-function GridCard({ item, theme, onTheme, isAr, currency, onOpen }) {
-  return (
-    <button
-      onClick={onOpen}
-      className="group relative w-full overflow-hidden rounded-xl bg-white text-start shadow-soft ring-1 ring-black/10 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-lift active:scale-[0.98]"
-    >
-      {/* Full-width banner — current language only */}
-      <div className="flex items-center justify-center px-2 py-2" style={{ backgroundColor: theme, color: onTheme }}>
-        <span
-          className={`truncate font-extrabold leading-tight ${isAr ? 'font-arabic text-[13px]' : 'text-[11px] uppercase tracking-wide'}`}
-        >
-          {isAr ? item.nameAr || item.nameEn : item.nameEn || item.nameAr}
-        </span>
-      </div>
-
-      {/* Product photo on white with the watermark pattern */}
-      <div className="pattern-arabesque relative aspect-[4/3] bg-white">
-        {item.imageUrl ? (
-          <SmartImage
-            src={item.imageUrl}
-            alt={item.nameEn}
-            className="h-full w-full"
-            imgClassName="h-full w-full object-contain p-1.5 transition-transform duration-500 group-hover:scale-[1.04]"
-          />
-        ) : (
-          <div className="flex h-full items-center justify-center text-gray-200">
-            <UtensilsCrossed size={30} />
-          </div>
-        )}
-        {item.badgeText && <Ribbon text={item.badgeText} />}
-        <PriceTag price={item.price} currency={currency} />
-      </div>
-    </button>
-  );
-}
-
-/* ---------- Large card (full width) — like the fries page ---------- */
-function LargeCard({ item, theme, onTheme, isAr, currency, onOpen }) {
-  return (
-    <button
-      onClick={onOpen}
-      className="group relative block w-full overflow-hidden rounded-xl bg-white text-start shadow-soft ring-1 ring-black/10 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-lift active:scale-[0.99]"
-    >
-      <div className="flex items-center justify-center px-3 py-2.5" style={{ backgroundColor: theme, color: onTheme }}>
-        <span
-          className={`truncate font-extrabold leading-tight ${isAr ? 'font-arabic text-[15px]' : 'text-sm uppercase tracking-wide'}`}
-        >
-          {isAr ? item.nameAr || item.nameEn : item.nameEn || item.nameAr}
-        </span>
-      </div>
-
-      <div className="pattern-arabesque relative bg-white">
-        {item.imageUrl ? (
-          <SmartImage
-            src={item.imageUrl}
-            alt={item.nameEn}
-            className="w-full"
-            imgClassName="mx-auto aspect-[16/9] w-full object-contain p-2 transition-transform duration-500 group-hover:scale-[1.03]"
-          />
-        ) : (
-          <div className="flex aspect-[16/9] items-center justify-center text-gray-200">
-            <UtensilsCrossed size={40} />
-          </div>
-        )}
-        {item.badgeText && <Ribbon text={item.badgeText} />}
-        {/* Circular price badge, vertically centered on the end side — reference fries-page style */}
-        <span
-          className="absolute end-3 top-1/2 flex h-16 w-16 -translate-y-1/2 flex-col items-center justify-center rounded-full text-white shadow-lift ring-4 ring-white/80"
-          style={{ background: TAG_GRADIENT }}
-        >
-          <span className="text-[15px] font-extrabold leading-tight">{fmtPrice(item.price, currency)}</span>
-          <span className="text-[8px] font-bold uppercase tracking-wider leading-none opacity-90">{currency}</span>
-        </span>
-      </div>
-    </button>
-  );
-}
-
-/* ---------- Compact card (3 per row) — like the burger row ---------- */
-function CompactCard({ item, theme, onTheme, isAr, currency, onOpen }) {
-  return (
-    <button
-      onClick={onOpen}
-      className="group relative w-full overflow-hidden rounded-xl bg-white text-start shadow-soft ring-1 ring-black/10 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-lift active:scale-[0.97]"
-    >
-      <div className="flex items-center justify-center px-1 py-1.5" style={{ backgroundColor: theme, color: onTheme }}>
-        <span
-          className={`w-full truncate text-center font-extrabold leading-tight ${isAr ? 'font-arabic text-[11px]' : 'text-[9px] uppercase tracking-wide'}`}
-        >
-          {isAr ? item.nameAr || item.nameEn : item.nameEn || item.nameAr}
-        </span>
-      </div>
-
-      <div className="pattern-arabesque relative aspect-square bg-white">
-        {item.imageUrl ? (
-          <SmartImage
-            src={item.imageUrl}
-            alt={item.nameEn}
-            className="h-full w-full"
-            imgClassName="h-full w-full object-contain p-1 transition-transform duration-500 group-hover:scale-[1.05]"
-          />
-        ) : (
-          <div className="flex h-full items-center justify-center text-gray-200">
-            <UtensilsCrossed size={22} />
-          </div>
-        )}
-        {item.badgeText && <Ribbon text={item.badgeText} small />}
-        <PriceTag price={item.price} currency={currency} small />
-      </div>
-    </button>
-  );
-}
-
-/* ---------- List card (horizontal rows with description) ---------- */
-function ListCard({ item, theme, onTheme, isAr, currency, onOpen }) {
-  const desc = isAr ? item.descriptionAr || item.descriptionEn : item.descriptionEn || item.descriptionAr;
-  return (
-    <button
-      onClick={onOpen}
-      className="group relative flex w-full items-center gap-3 overflow-hidden rounded-xl bg-white p-2.5 text-start shadow-soft ring-1 ring-black/10 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-lift active:scale-[0.99]"
-    >
-      <div className="pattern-arabesque relative h-20 w-20 shrink-0 overflow-hidden rounded-lg bg-white ring-1 ring-black/5">
-        {item.imageUrl ? (
-          <SmartImage
-            src={item.imageUrl}
-            alt={item.nameEn}
-            className="h-full w-full"
-            imgClassName="h-full w-full object-contain p-1 transition-transform duration-500 group-hover:scale-[1.06]"
-          />
-        ) : (
-          <div className="flex h-full items-center justify-center text-gray-200"><UtensilsCrossed size={22} /></div>
-        )}
-      </div>
-
-      <div className="min-w-0 flex-1">
-        <span
-          className={`block truncate font-extrabold text-gray-900 ${isAr ? 'font-arabic text-[14px]' : 'text-[13px] uppercase tracking-wide'}`}
-        >
-          {isAr ? item.nameAr || item.nameEn : item.nameEn || item.nameAr}
-        </span>
-        {desc && <p className="mt-0.5 line-clamp-1 text-xs text-gray-400">{desc}</p>}
-        {item.badgeText && (
-          <span
-            className="mt-1 inline-block rounded px-1.5 py-0.5 text-[8px] font-extrabold uppercase tracking-wider text-white"
-            style={{ background: RIBBON_GRADIENT }}
-          >
-            {item.badgeText}
-          </span>
-        )}
-      </div>
-
-      <span className="flex shrink-0 flex-col items-center rounded-lg px-2.5 py-1 text-white shadow-md" style={{ background: TAG_GRADIENT }}>
-        <span className="text-sm font-extrabold leading-tight">{fmtPrice(item.price, currency)}</span>
-        <span className="text-[8px] font-bold uppercase tracking-wider leading-none opacity-90">{currency}</span>
-      </span>
-    </button>
-  );
-}
-
-/* ---------- Featured hero card (full-bleed photo, overlay text) ---------- */
-function HeroCard({ item, theme, onTheme, isAr, currency, onOpen }) {
-  const desc = isAr ? item.descriptionAr || item.descriptionEn : item.descriptionEn || item.descriptionAr;
-  return (
-    <button
-      onClick={onOpen}
-      className="group relative block w-full overflow-hidden rounded-2xl bg-gray-900 text-start shadow-lift ring-1 ring-black/10 transition-all duration-300 hover:-translate-y-0.5 active:scale-[0.99]"
-    >
-      <div className="relative aspect-[16/10]">
-        {item.imageUrl ? (
-          <SmartImage
-            src={item.imageUrl}
-            alt={item.nameEn}
-            className="h-full w-full"
-            imgClassName="h-full w-full object-cover transition-transform duration-700 group-hover:scale-[1.05]"
-          />
-        ) : (
-          <div className="pattern-arabesque flex h-full items-center justify-center bg-white text-gray-200"><UtensilsCrossed size={40} /></div>
-        )}
-        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-2/3 bg-gradient-to-t from-black/85 via-black/35 to-transparent" />
-        {item.badgeText && <Ribbon text={item.badgeText} />}
-
-        <div className="absolute inset-x-0 bottom-0 flex items-end justify-between gap-3 p-4">
-          <div className="min-w-0">
+    <div className="w-1/2 px-1.5 pb-5 md:w-1/3 lg:w-1/4 xl:w-1/5">
+      <button onClick={onOpen} className="relative block w-full text-start">
+        <div className="relative aspect-square w-full overflow-hidden rounded-lg" style={{ backgroundColor: primary10 }}>
+          {item.imageUrl ? (
+            <SmartImage
+              src={item.imageUrl}
+              alt={item.nameEn}
+              className="h-full w-full"
+              imgClassName="h-full w-full object-cover"
+            />
+          ) : (
+            <div className="flex h-full items-center justify-center" style={{ color: theme }}>
+              <UtensilsCrossed size={28} />
+            </div>
+          )}
+          {item.badgeText && (
             <span
-              className={`block truncate font-extrabold text-white drop-shadow ${isAr ? 'font-arabic text-xl' : 'text-lg uppercase tracking-wide'}`}
+              className="absolute start-1.5 top-1.5 rounded-md px-2 py-0.5 text-[11px] font-semibold shadow-sm"
+              style={{ backgroundColor: theme, color: onTheme }}
             >
-              {isAr ? item.nameAr || item.nameEn : item.nameEn || item.nameAr}
+              {item.badgeText}
             </span>
-            {desc && <p className="mt-0.5 line-clamp-1 text-xs text-white/75">{desc}</p>}
-          </div>
-          <span className="flex shrink-0 flex-col items-center rounded-xl px-3 py-1.5 text-white shadow-lift" style={{ background: TAG_GRADIENT }}>
-            <span className="text-base font-extrabold leading-tight">{fmtPrice(item.price, currency)}</span>
-            <span className="text-[8px] font-bold uppercase tracking-wider leading-none opacity-90">{currency}</span>
+          )}
+          {/* Overlapping circular + button */}
+          <span className="pointer-events-none absolute bottom-0.5 end-0.5 flex justify-end">
+            <span
+              className="z-10 flex h-10 w-10 items-center justify-center rounded-full border-[3px] border-white"
+              style={{ backgroundColor: theme, color: onTheme }}
+            >
+              <Plus size={18} />
+            </span>
           </span>
         </div>
-      </div>
-    </button>
-  );
-}
 
-/* ---------- Elegant card (no banner, centered text, theme accents) ---------- */
-function MinimalCard({ item, theme, onTheme, isAr, currency, onOpen }) {
-  return (
-    <button
-      onClick={onOpen}
-      className="group relative w-full overflow-hidden rounded-xl bg-white pb-3.5 text-start shadow-soft ring-1 ring-black/10 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-lift active:scale-[0.98]"
-    >
-      <div className="pattern-arabesque relative aspect-[4/3] bg-white">
-        {item.imageUrl ? (
-          <SmartImage
-            src={item.imageUrl}
-            alt={item.nameEn}
-            className="h-full w-full"
-            imgClassName="h-full w-full object-contain p-2 transition-transform duration-500 group-hover:scale-[1.04]"
-          />
-        ) : (
-          <div className="flex h-full items-center justify-center text-gray-200"><UtensilsCrossed size={30} /></div>
-        )}
-        {item.badgeText && <Ribbon text={item.badgeText} small />}
-      </div>
-
-      <div className="px-2 text-center">
-        <div className="truncate text-[12px] font-bold uppercase tracking-wide text-gray-900">{item.nameEn}</div>
-        <div className="font-arabic truncate text-[12px] font-bold text-gray-500">{item.nameAr}</div>
-        <span className="mx-auto mt-1.5 block h-0.5 w-8 rounded-full" style={{ backgroundColor: theme }} />
-        <div className="mt-1.5 text-sm font-extrabold" style={{ color: theme }}>
-          {fmtPrice(item.price, currency)} <span className="text-[9px] font-bold uppercase text-gray-400">{currency}</span>
+        <div className="relative flex min-w-0 flex-col pt-2">
+          <span className="max-w-full break-words text-[15px] font-semibold leading-snug text-gray-900">
+            {isAr ? item.nameAr || item.nameEn : item.nameEn || item.nameAr}
+          </span>
+          {(item.descriptionEn || item.descriptionAr) && (
+            <span className="mt-0.5 line-clamp-2 whitespace-pre-line break-words text-sm text-gray-500">
+              {isAr ? item.descriptionAr || item.descriptionEn : item.descriptionEn || item.descriptionAr}
+            </span>
+          )}
+          <span className="mt-1.5 flex shrink-0 items-center justify-between">
+            <span className="flex flex-wrap items-baseline text-sm">
+              <span className="whitespace-nowrap font-semibold text-gray-900">
+                {fmtPrice(item.price, currency)} <span className="text-[11px] font-medium text-gray-400">{currency}</span>
+              </span>
+            </span>
+          </span>
         </div>
-      </div>
-    </button>
+      </button>
+    </div>
   );
 }
 
 function MenuSkeleton() {
   return (
-    <div className="pattern-arabesque min-h-screen animate-pulse" style={{ backgroundColor: '#FAF8F5' }}>
-      <div className="flex flex-col items-center pb-8 pt-10">
-        <div className="h-24 w-24 rounded-full bg-gray-200" />
-        <div className="mt-4 h-6 w-44 rounded-full bg-gray-200" />
-        <div className="mt-2 h-4 w-32 rounded-full bg-gray-200" />
+    <div className="min-h-screen animate-pulse bg-white">
+      <div className="flex justify-end px-4 pt-4">
+        <div className="h-8 w-20 rounded-full bg-gray-100" />
       </div>
-      <div className="mx-auto flex max-w-2xl gap-2 px-4 py-3">
-        {[80, 96, 72, 88].map((w, i) => (
-          <div key={i} className="h-9 rounded-full bg-gray-200" style={{ width: w }} />
+      <div className="mx-4 mt-2 h-36 rounded-xl bg-gray-100" />
+      <div className="mx-auto mt-5 h-5 w-44 rounded-full bg-gray-100" />
+      <div className="mx-auto mt-2 h-3.5 w-32 rounded-full bg-gray-100" />
+      <div className="mx-4 mt-5 h-10 rounded-full bg-gray-100" />
+      <div className="mt-3 flex gap-2 px-4">
+        {[72, 88, 64, 80].map((w, i) => (
+          <div key={i} className="h-8 rounded-lg bg-gray-100" style={{ width: w }} />
         ))}
       </div>
-      <div className="mx-auto grid max-w-2xl grid-cols-2 gap-3 px-4">
-        {Array.from({ length: 6 }).map((_, i) => (
-          <div key={i} className="overflow-hidden rounded-xl bg-white shadow-soft">
-            <div className="h-9 bg-gray-200" />
-            <div className="aspect-[4/3] bg-gray-50" />
+      <div className="mx-4 mt-5 h-20 rounded-md bg-gray-100" />
+      <div className="mt-3 flex flex-wrap px-2.5">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <div key={i} className="w-1/2 px-1.5 pb-5">
+            <div className="aspect-square rounded-lg bg-gray-100" />
+            <div className="mt-2 h-4 w-3/4 rounded bg-gray-100" />
+            <div className="mt-1.5 h-3 w-1/2 rounded bg-gray-100" />
           </div>
         ))}
       </div>
@@ -696,9 +695,9 @@ function MenuSkeleton() {
 
 function NotFound() {
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-gray-50 px-6 text-center">
-      <div className="rounded-3xl bg-white p-4 text-gray-300 shadow-soft"><SearchX size={40} /></div>
-      <h1 className="mt-5 text-xl font-extrabold text-gray-900">Menu not found</h1>
+    <div className="flex min-h-screen flex-col items-center justify-center bg-white px-6 text-center">
+      <div className="rounded-3xl bg-gray-50 p-4 text-gray-300"><SearchX size={40} /></div>
+      <h1 className="mt-5 text-xl font-semibold text-gray-900">Menu not found</h1>
       <p className="mt-1.5 max-w-xs text-sm text-gray-500">
         This menu link doesn't exist or the branch is currently inactive.
         <span className="font-arabic mt-1 block" dir="rtl">هذه القائمة غير موجودة أو الفرع غير نشط حالياً.</span>
