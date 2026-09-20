@@ -8,6 +8,10 @@ import { SmartImage } from '../components/motion.jsx';
 
 const fmtPrice = (n, currency = 'OMR') => Number(n).toFixed(currency === 'OMR' ? 3 : 2);
 
+// Dark theme surfaces for the public menu
+const BG = '#111214';
+const SURFACE = '#1B1D1F';
+
 // Foreground contrast for the theme color (guards very light brand colors)
 function readableOn(hex) {
   try {
@@ -211,8 +215,8 @@ export default function PublicMenu() {
   if (status === 'notfound') return <NotFound />;
 
   const { restaurant, branch, categories } = data;
-  const primary10 = rgba(theme, 0.08);
-  const primary20 = rgba(theme, 0.18);
+  const primary10 = rgba(theme, 0.12);
+  const primary20 = rgba(theme, 0.22);
 
   /* ================= WELCOME SCREEN ================= */
   if (screen === 'welcome') {
@@ -220,7 +224,7 @@ export default function PublicMenu() {
     return (
       <div
         dir={isAr ? 'rtl' : 'ltr'}
-        className={`fixed inset-0 overflow-y-auto ${isAr ? 'font-arabic' : ''}`}
+        className={`menu-dark fixed inset-0 overflow-y-auto ${isAr ? 'font-arabic' : ''}`}
         style={{ background: `linear-gradient(180deg, ${theme} 0%, ${rgba(theme, 0.85)} 60%, ${rgba('#000000', 0.9)} 160%)` }}
       >
         <div className="pattern-arabesque pointer-events-none fixed inset-0 opacity-30" />
@@ -293,12 +297,16 @@ export default function PublicMenu() {
   const gridItems = search ? searchResults : tab === 'favorites' ? favoriteItems : null;
 
   return (
-    <div dir={isAr ? 'rtl' : 'ltr'} className={`min-h-screen bg-white pb-24 text-gray-800 ${isAr ? 'font-arabic' : ''}`}>
+    <div
+      dir={isAr ? 'rtl' : 'ltr'}
+      className={`menu-dark min-h-screen pb-24 text-gray-100 ${isAr ? 'font-arabic' : ''}`}
+      style={{ backgroundColor: BG }}
+    >
       {/* Top row: language pill */}
       <div className="flex h-12 items-center justify-between px-4 pt-2">
         <button
           onClick={() => setScreen('welcome')}
-          className="flex h-8 w-8 items-center justify-center rounded-full transition-colors hover:bg-gray-50"
+          className="flex h-8 w-8 items-center justify-center rounded-full transition-colors hover:bg-white/5"
           title={restaurant.nameEn}
         >
           {restaurant.logoUrl ? (
@@ -309,7 +317,7 @@ export default function PublicMenu() {
         </button>
         <button
           onClick={() => switchLang(isAr ? 'en' : 'ar')}
-          className="flex h-8 items-center gap-1.5 rounded-full border border-gray-300 px-3 text-xs font-semibold text-gray-700 transition-colors active:bg-gray-50"
+          className="flex h-8 items-center gap-1.5 rounded-full border border-white/20 px-3 text-xs font-semibold text-gray-200 transition-colors active:bg-white/10"
         >
           {isAr ? 'English' : <span className="font-arabic">عربي</span>}
         </button>
@@ -337,21 +345,21 @@ export default function PublicMenu() {
 
       {/* Restaurant name + description */}
       <div className="mt-5 px-4 text-center">
-        <h1 className="break-words font-sans text-xl font-semibold text-gray-900">{name(restaurant, 'nameEn', 'nameAr')}</h1>
+        <h1 className="break-words font-sans text-xl font-semibold text-white">{name(restaurant, 'nameEn', 'nameAr')}</h1>
         {(restaurant.taglineEn || restaurant.taglineAr) && (
-          <p className="mt-1 break-words text-sm text-gray-500">{name(restaurant, 'taglineEn', 'taglineAr')}</p>
+          <p className="mt-1 break-words text-sm text-gray-400">{name(restaurant, 'taglineEn', 'taglineAr')}</p>
         )}
       </div>
 
       {/* Sticky: search + category tabs */}
-      <div className="sticky top-0 z-30 mt-4 bg-white">
+      <div className="sticky top-0 z-30 mt-4" style={{ backgroundColor: BG }}>
         <div className="px-4 pt-2">
           <div className="relative h-10 overflow-hidden rounded-full">
             <input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder={isAr ? 'ابحث في القائمة...' : 'Search the menu...'}
-              className="block h-full w-full rounded-full border-none pe-9 ps-10 text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-0"
+              className="block h-full w-full rounded-full border-none pe-9 ps-10 text-sm text-gray-100 placeholder-gray-500 focus:outline-none focus:ring-0"
               style={{ backgroundColor: primary10 }}
             />
             <span className="absolute bottom-0 start-0 top-0 flex h-10 w-10 items-center justify-center">
@@ -389,7 +397,7 @@ export default function PublicMenu() {
                     style={
                       active
                         ? { backgroundColor: theme, color: onTheme }
-                        : { backgroundColor: 'rgba(0,0,0,0.03)', color: '#374151' }
+                        : { backgroundColor: 'rgba(255,255,255,0.06)', color: '#D1D5DB' }
                     }
                   >
                     {name(c, 'nameEn', 'nameAr')}
@@ -398,7 +406,7 @@ export default function PublicMenu() {
               })}
             </div>
           </div>
-          <div className="absolute bottom-0 left-0 right-0 border-t border-gray-900/5" />
+          <div className="absolute bottom-0 left-0 right-0 border-t border-white/5" />
         </div>
       </div>
 
@@ -418,7 +426,10 @@ export default function PublicMenu() {
                 className="relative mb-3 flex h-20 shrink-0 flex-col items-start justify-end overflow-hidden rounded-md font-medium"
                 style={{ background: `linear-gradient(to top, ${primary20}, ${primary10})` }}
               >
-                <span className="z-10 mx-2 mb-2 mt-2 block rounded bg-white px-2.5 py-1 font-sans text-sm font-semibold text-gray-800 shadow-sm">
+                <span
+                  className="z-10 mx-2 mb-2 mt-2 block rounded px-2.5 py-1 font-sans text-sm font-semibold text-gray-100 shadow-sm"
+                  style={{ backgroundColor: BG }}
+                >
                   {name(c, 'nameEn', 'nameAr')}
                 </span>
               </div>
@@ -456,9 +467,9 @@ export default function PublicMenu() {
                 : 'Favorites'}
           </p>
           {gridItems.length === 0 ? (
-            <div className="flex flex-col items-center py-16 text-center text-gray-300">
+            <div className="flex flex-col items-center py-16 text-center text-gray-600">
               {search ? <SearchX size={36} /> : <Heart size={36} />}
-              <p className="mt-3 text-sm font-medium text-gray-400">
+              <p className="mt-3 text-sm font-medium text-gray-500">
                 {search ? (isAr ? 'لا توجد نتائج' : 'Nothing found') : isAr ? 'لا توجد عناصر مفضلة بعد' : 'No favorites yet'}
               </p>
             </div>
@@ -485,15 +496,15 @@ export default function PublicMenu() {
       )}
 
       {/* Footer */}
-      <div className="mx-auto mt-10 max-w-xs pb-4 text-center text-sm text-gray-400">
-        Powered by <span className="font-semibold text-gray-500">Simat</span>
+      <div className="mx-auto mt-10 max-w-xs pb-4 text-center text-sm text-gray-600">
+        Powered by <span className="font-semibold text-gray-400">Simat</span>
       </div>
 
       {/* ===== Bottom tab bar ===== */}
       <nav className="fixed inset-x-0 bottom-0 z-40 flex justify-center">
         <div
-          className="flex w-full max-w-md rounded-t-xl border-l border-r border-t border-gray-900/5 bg-white/90 backdrop-blur"
-          style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
+          className="flex w-full max-w-md rounded-t-xl border-l border-r border-t border-white/10 backdrop-blur"
+          style={{ paddingBottom: 'env(safe-area-inset-bottom)', backgroundColor: 'rgba(27,29,31,0.92)' }}
         >
           {[
             { id: 'menu', icon: UtensilsCrossed, label: isAr ? 'القائمة' : 'Menu', onClick: () => { setTab('menu'); setSearch(''); window.scrollTo({ top: 0 }); } },
@@ -506,7 +517,7 @@ export default function PublicMenu() {
             return (
               <button key={id} onClick={onClick} className="flex min-w-[4rem] flex-1 cursor-pointer flex-col items-center py-2 transition">
                 <span className="relative">
-                  <Icon size={21} style={{ color: active ? theme : '#9CA3AF' }} fill={id === 'favorites' && count > 0 ? theme : 'none'} strokeWidth={id === 'favorites' && count > 0 ? 0 : 2} />
+                  <Icon size={21} style={{ color: active ? theme : '#6B7280' }} fill={id === 'favorites' && count > 0 ? theme : 'none'} strokeWidth={id === 'favorites' && count > 0 ? 0 : 2} />
                   {count > 0 && id !== 'menu' && (
                     <span
                       className="absolute -end-2 -top-1.5 flex min-h-[17px] min-w-[17px] items-center justify-center rounded-full px-1 text-[10px] font-semibold"
@@ -516,7 +527,7 @@ export default function PublicMenu() {
                     </span>
                   )}
                 </span>
-                <span className="mt-1 text-center text-xs font-medium" style={{ color: active ? theme : '#9CA3AF' }}>
+                <span className="mt-1 text-center text-xs font-medium" style={{ color: active ? theme : '#6B7280' }}>
                   {label}
                 </span>
               </button>
@@ -528,11 +539,14 @@ export default function PublicMenu() {
       {/* ===== Category drawer ===== */}
       {drawerOpen && (
         <div className="fixed inset-0 z-[60]">
-          <div className="animate-backdrop absolute inset-0 bg-white/50 backdrop-blur" onClick={() => setDrawerOpen(false)} />
-          <aside className="animate-fade-in absolute top-0 flex h-screen w-64 max-w-[calc(100vw-100px)] flex-col bg-white shadow-xl start-0">
+          <div className="animate-backdrop absolute inset-0 bg-black/60 backdrop-blur" onClick={() => setDrawerOpen(false)} />
+          <aside
+            className="animate-fade-in absolute top-0 flex h-screen w-64 max-w-[calc(100vw-100px)] flex-col shadow-xl start-0"
+            style={{ backgroundColor: SURFACE }}
+          >
             <div className="flex items-center justify-between px-4 py-4">
-              <span className="font-sans text-base font-semibold text-gray-900">{isAr ? 'الفئات' : 'Categories'}</span>
-              <button onClick={() => setDrawerOpen(false)} className="rounded-full p-1.5 text-gray-400 hover:bg-gray-50">
+              <span className="font-sans text-base font-semibold text-white">{isAr ? 'الفئات' : 'Categories'}</span>
+              <button onClick={() => setDrawerOpen(false)} className="rounded-full p-1.5 text-gray-400 hover:bg-white/10">
                 <X size={17} />
               </button>
             </div>
@@ -541,7 +555,7 @@ export default function PublicMenu() {
                 <button
                   key={c.id}
                   onClick={() => scrollToCat(c.id)}
-                  className="flex items-center justify-between rounded-lg px-3 py-3 text-start text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50"
+                  className="flex items-center justify-between rounded-lg px-3 py-3 text-start text-sm font-medium text-gray-200 transition-colors hover:bg-white/5"
                 >
                   {name(c, 'nameEn', 'nameAr')}
                   <span
@@ -560,14 +574,15 @@ export default function PublicMenu() {
       {/* ===== Info sheet ===== */}
       {infoOpen && (
         <div className="fixed inset-0 z-[60]" onClick={() => setInfoOpen(false)}>
-          <div className="animate-backdrop absolute inset-0 bg-white/50 backdrop-blur" />
+          <div className="animate-backdrop absolute inset-0 bg-black/60 backdrop-blur" />
           <div
             onClick={(e) => e.stopPropagation()}
-            className="animate-sheet-up absolute inset-x-0 bottom-0 mx-auto max-w-md rounded-t-xl border-l border-r border-t border-gray-900/5 bg-white p-5 pb-8 shadow-lift"
+            className="animate-sheet-up absolute inset-x-0 bottom-0 mx-auto max-w-md rounded-t-xl border-l border-r border-t border-white/10 p-5 pb-8 shadow-lift"
+            style={{ backgroundColor: SURFACE }}
           >
             <div className="mb-4 flex items-center justify-between">
-              <h3 className="font-sans text-lg font-semibold text-gray-900">{name(branch, 'nameEn', 'nameAr')}</h3>
-              <button onClick={() => setInfoOpen(false)} className="rounded-full p-1.5 text-gray-400 hover:bg-gray-50">
+              <h3 className="font-sans text-lg font-semibold text-white">{name(branch, 'nameEn', 'nameAr')}</h3>
+              <button onClick={() => setInfoOpen(false)} className="rounded-full p-1.5 text-gray-400 hover:bg-white/10">
                 <X size={17} />
               </button>
             </div>
@@ -575,7 +590,7 @@ export default function PublicMenu() {
               {branch.address && (
                 <div className="flex items-start gap-3 rounded-xl px-3.5 py-3" style={{ backgroundColor: primary10 }}>
                   <MapPin size={17} className="mt-0.5 shrink-0" style={{ color: theme }} />
-                  <span className="text-sm text-gray-700">{branch.address}</span>
+                  <span className="text-sm text-gray-200">{branch.address}</span>
                 </div>
               )}
               {branch.mapLink && (
@@ -592,7 +607,7 @@ export default function PublicMenu() {
               {branch.phone && (
                 <a
                   href={`tel:${branch.phone}`}
-                  className="flex h-11 items-center justify-center gap-2 rounded-xl border border-gray-200 text-sm font-semibold text-gray-700 transition-colors active:bg-gray-50"
+                  className="flex h-11 items-center justify-center gap-2 rounded-xl border border-white/15 text-sm font-semibold text-gray-200 transition-colors active:bg-white/5"
                 >
                   <Phone size={15} /> {branch.phone}
                 </a>
@@ -605,17 +620,19 @@ export default function PublicMenu() {
       {/* ===== Product detail modal — floating card with sticky action bar, reference style ===== */}
       {detail && (
         <div
-          className="fixed left-0 right-0 top-0 z-[70] h-screen transform overflow-y-scroll bg-white/50 backdrop-blur"
+          className="fixed left-0 right-0 top-0 z-[70] h-screen transform overflow-y-scroll bg-black/60 backdrop-blur"
           onClick={() => setDetail(null)}
         >
           <div className="mx-auto flex h-full min-h-screen w-full flex-col items-center justify-center px-4 py-6">
             <div
               onClick={(e) => e.stopPropagation()}
-              className="animate-pop relative w-[550px] max-w-full shrink-0 rounded-xl bg-white shadow-lg"
+              className="animate-pop relative w-[550px] max-w-full shrink-0 rounded-xl shadow-lg"
+              style={{ backgroundColor: SURFACE }}
             >
-              <div className="relative flex w-full shrink-0 items-center overflow-hidden rounded-t-xl">
+              {/* Full image shown uncropped inside the frame */}
+              <div className="relative flex w-full shrink-0 items-center overflow-hidden rounded-t-xl bg-black/40">
                 {detail.imageUrl ? (
-                  <SmartImage src={detail.imageUrl} alt="" eager className="w-full" imgClassName="aspect-[4/3] w-full rounded-t-xl object-cover" />
+                  <SmartImage src={detail.imageUrl} alt="" eager className="w-full" imgClassName="aspect-[4/3] w-full object-contain" />
                 ) : (
                   <div className="flex aspect-[16/9] w-full items-center justify-center rounded-t-xl" style={{ backgroundColor: primary10 }}>
                     <UtensilsCrossed size={40} style={{ color: theme }} />
@@ -632,14 +649,14 @@ export default function PublicMenu() {
               </div>
               <button
                 onClick={() => setDetail(null)}
-                className="absolute end-5 top-5 z-20 flex h-9 w-9 items-center justify-center rounded-full bg-white/90 text-gray-600 shadow-sm backdrop-blur"
+                className="absolute end-5 top-5 z-20 flex h-9 w-9 items-center justify-center rounded-full bg-black/50 text-white shadow-sm backdrop-blur"
               >
                 <X size={17} />
               </button>
 
               <div className="px-4 pt-4">
                 <div className="flex min-w-0 items-center">
-                  <h3 className="min-w-0 flex-1 break-words font-sans text-xl font-semibold text-gray-900">
+                  <h3 className="min-w-0 flex-1 break-words font-sans text-xl font-semibold text-white">
                     {isAr ? detail.nameAr || detail.nameEn : detail.nameEn || detail.nameAr}
                   </h3>
                   <div className="flex shrink-0 ps-6">
@@ -657,25 +674,25 @@ export default function PublicMenu() {
                   </div>
                 </div>
                 {(detail.descriptionEn || detail.descriptionAr) && (
-                  <p className="mt-1 whitespace-pre-line text-sm italic text-gray-500">
+                  <p className="mt-1 whitespace-pre-line text-sm italic text-gray-400">
                     {isAr ? detail.descriptionAr || detail.descriptionEn : detail.descriptionEn || detail.descriptionAr}
                   </p>
                 )}
                 <div className="mb-2 mt-4 flex flex-wrap items-center justify-between">
-                  <span className="me-4 text-lg font-semibold text-gray-900">
+                  <span className="me-4 text-lg font-semibold text-white">
                     {fmtPrice(detail.price, restaurant.currency)}{' '}
-                    <span className="text-xs font-medium text-gray-400">{restaurant.currency}</span>
+                    <span className="text-xs font-medium text-gray-500">{restaurant.currency}</span>
                   </span>
                 </div>
               </div>
 
               {/* Sticky action bar: quantity stepper + add to order */}
-              <div className="sticky bottom-0 z-40 mt-4 flex items-center rounded-b-xl bg-white px-4 pb-4 pt-4">
+              <div className="sticky bottom-0 z-40 mt-4 flex items-center rounded-b-xl px-4 pb-4 pt-4" style={{ backgroundColor: SURFACE }}>
                 <div className="flex h-12 w-[7rem] shrink-0 items-center rounded-full border" style={{ borderColor: rgba(theme, 0.5) }}>
                   <button onClick={() => setDetailQty((q) => Math.max(1, q - 1))} className="flex h-full flex-1 items-center justify-center" style={{ color: theme }}>
                     <Minus size={16} />
                   </button>
-                  <span className="min-w-[25px] px-1 text-center text-sm font-semibold text-gray-900">{detailQty}</span>
+                  <span className="min-w-[25px] px-1 text-center text-sm font-semibold text-gray-100">{detailQty}</span>
                   <button onClick={() => setDetailQty((q) => q + 1)} className="flex h-full flex-1 items-center justify-center" style={{ color: theme }}>
                     <Plus size={16} />
                   </button>
@@ -699,22 +716,23 @@ export default function PublicMenu() {
       {/* ===== Order sheet ===== */}
       {orderOpen && (
         <div className="fixed inset-0 z-[65]" onClick={() => setOrderOpen(false)}>
-          <div className="animate-backdrop absolute inset-0 bg-white/50 backdrop-blur" />
+          <div className="animate-backdrop absolute inset-0 bg-black/60 backdrop-blur" />
           <div
             onClick={(e) => e.stopPropagation()}
-            className="animate-sheet-up absolute inset-x-0 bottom-0 mx-auto flex max-h-[85vh] max-w-md flex-col rounded-t-xl border-l border-r border-t border-gray-900/5 bg-white shadow-lift"
+            className="animate-sheet-up absolute inset-x-0 bottom-0 mx-auto flex max-h-[85vh] max-w-md flex-col rounded-t-xl border-l border-r border-t border-white/10 shadow-lift"
+            style={{ backgroundColor: SURFACE }}
           >
             <div className="flex items-center justify-between p-4 pb-2">
-              <h3 className="font-sans text-lg font-semibold text-gray-900">{isAr ? 'طلبك' : 'Your order'}</h3>
-              <button onClick={() => setOrderOpen(false)} className="rounded-full p-1.5 text-gray-400 hover:bg-gray-50">
+              <h3 className="font-sans text-lg font-semibold text-white">{isAr ? 'طلبك' : 'Your order'}</h3>
+              <button onClick={() => setOrderOpen(false)} className="rounded-full p-1.5 text-gray-400 hover:bg-white/10">
                 <X size={17} />
               </button>
             </div>
 
             {orderRows.length === 0 ? (
-              <div className="flex flex-col items-center px-4 py-14 text-center text-gray-300">
+              <div className="flex flex-col items-center px-4 py-14 text-center text-gray-600">
                 <ShoppingBag size={36} />
-                <p className="mt-3 text-sm font-medium text-gray-400">
+                <p className="mt-3 text-sm font-medium text-gray-500">
                   {isAr ? 'لم تقم بإضافة أي عناصر بعد' : 'You have not added anything yet'}
                 </p>
               </div>
@@ -722,7 +740,7 @@ export default function PublicMenu() {
               <>
                 <div className="flex-1 overflow-y-auto px-4">
                   {orderRows.map(({ item, qty }) => (
-                    <div key={item.id} className="flex items-center border-b border-gray-900/5 py-3 last:border-b-0">
+                    <div key={item.id} className="flex items-center border-b border-white/5 py-3 last:border-b-0">
                       <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-md" style={{ backgroundColor: primary10 }}>
                         {item.imageUrl ? (
                           <img src={item.imageUrl} alt="" className="absolute inset-0 h-full w-full rounded-md object-cover object-center" />
@@ -731,25 +749,25 @@ export default function PublicMenu() {
                         )}
                       </div>
                       <div className="min-w-0 flex-1 px-3">
-                        <div className="truncate text-sm font-semibold text-gray-900">
+                        <div className="truncate text-sm font-semibold text-gray-100">
                           {isAr ? item.nameAr || item.nameEn : item.nameEn || item.nameAr}
                         </div>
-                        <div className="mt-0.5 text-sm font-medium text-gray-500">
-                          {fmtPrice(item.price * qty, restaurant.currency)} <span className="text-[11px] text-gray-400">{restaurant.currency}</span>
+                        <div className="mt-0.5 text-sm font-medium text-gray-400">
+                          {fmtPrice(item.price * qty, restaurant.currency)} <span className="text-[11px] text-gray-500">{restaurant.currency}</span>
                         </div>
                       </div>
                       <div className="flex h-9 w-[5.5rem] shrink-0 items-center rounded-full border" style={{ borderColor: rgba(theme, 0.5) }}>
                         <button onClick={() => setOrderQty(item.id, qty - 1)} className="flex h-full flex-1 items-center justify-center" style={{ color: theme }}>
                           <Minus size={13} />
                         </button>
-                        <span className="min-w-[20px] text-center text-xs font-semibold text-gray-900">{qty}</span>
+                        <span className="min-w-[20px] text-center text-xs font-semibold text-gray-100">{qty}</span>
                         <button onClick={() => setOrderQty(item.id, qty + 1)} className="flex h-full flex-1 items-center justify-center" style={{ color: theme }}>
                           <Plus size={13} />
                         </button>
                       </div>
                       <button
                         onClick={() => setOrderQty(item.id, 0)}
-                        className="ms-3 rounded p-1 text-gray-300 transition hover:text-red-500"
+                        className="ms-3 rounded p-1 text-gray-500 transition hover:text-red-500"
                       >
                         <Trash2 size={16} />
                       </button>
@@ -757,14 +775,14 @@ export default function PublicMenu() {
                   ))}
                 </div>
 
-                <div className="border-t border-gray-900/10 p-4 pb-6">
+                <div className="border-t border-white/10 p-4 pb-6">
                   <div className="flex items-center justify-between">
-                    <span className="text-base font-semibold text-gray-900">{isAr ? 'المجموع' : 'Total'}</span>
+                    <span className="text-base font-semibold text-white">{isAr ? 'المجموع' : 'Total'}</span>
                     <span className="text-lg font-semibold" style={{ color: theme }}>
-                      {fmtPrice(orderTotal, restaurant.currency)} <span className="text-xs font-medium text-gray-400">{restaurant.currency}</span>
+                      {fmtPrice(orderTotal, restaurant.currency)} <span className="text-xs font-medium text-gray-500">{restaurant.currency}</span>
                     </span>
                   </div>
-                  <p className="mt-2 text-center text-xs text-gray-400">
+                  <p className="mt-2 text-center text-xs text-gray-500">
                     {isAr ? 'أظهر هذه القائمة للنادل لإتمام طلبك' : 'Show this list to your waiter to place the order'}
                   </p>
                 </div>
@@ -810,8 +828,8 @@ function ProductCard({ item, theme, onTheme, primary10, isAr, currency, fav, onF
               e.stopPropagation();
               onFav();
             }}
-            className="absolute end-1.5 top-1.5 z-10 flex h-8 w-8 items-center justify-center rounded-full bg-white/90 shadow-sm backdrop-blur transition-transform active:scale-90"
-            style={{ color: fav ? theme : '#9CA3AF' }}
+            className="absolute end-1.5 top-1.5 z-10 flex h-8 w-8 items-center justify-center rounded-full bg-black/50 shadow-sm backdrop-blur transition-transform active:scale-90"
+            style={{ color: fav ? theme : '#D1D5DB' }}
           >
             <Heart size={15} fill={fav ? 'currentColor' : 'none'} />
           </span>
@@ -823,8 +841,8 @@ function ProductCard({ item, theme, onTheme, primary10, isAr, currency, fav, onF
                 e.stopPropagation();
                 onAdd();
               }}
-              className="z-10 flex h-10 w-10 items-center justify-center rounded-full border-[3px] border-white transition-transform active:scale-90"
-              style={{ backgroundColor: theme, color: onTheme }}
+              className="z-10 flex h-10 w-10 items-center justify-center rounded-full border-[3px] transition-transform active:scale-90"
+              style={{ backgroundColor: theme, color: onTheme, borderColor: BG }}
             >
               <Plus size={18} />
             </span>
@@ -832,18 +850,18 @@ function ProductCard({ item, theme, onTheme, primary10, isAr, currency, fav, onF
         </div>
 
         <div className="relative flex min-w-0 flex-col pt-2">
-          <span className="max-w-full break-words text-[15px] font-semibold leading-snug text-gray-900">
+          <span className="max-w-full break-words text-[15px] font-semibold leading-snug text-gray-50">
             {isAr ? item.nameAr || item.nameEn : item.nameEn || item.nameAr}
           </span>
           {(item.descriptionEn || item.descriptionAr) && (
-            <span className="mt-0.5 line-clamp-2 whitespace-pre-line break-words text-sm text-gray-500">
+            <span className="mt-0.5 line-clamp-2 whitespace-pre-line break-words text-sm text-gray-400">
               {isAr ? item.descriptionAr || item.descriptionEn : item.descriptionEn || item.descriptionAr}
             </span>
           )}
           <span className="mt-1.5 flex shrink-0 items-center justify-between">
             <span className="flex flex-wrap items-baseline text-sm">
-              <span className="whitespace-nowrap font-semibold text-gray-900">
-                {fmtPrice(item.price, currency)} <span className="text-[11px] font-medium text-gray-400">{currency}</span>
+              <span className="whitespace-nowrap font-semibold text-gray-50">
+                {fmtPrice(item.price, currency)} <span className="text-[11px] font-medium text-gray-500">{currency}</span>
               </span>
             </span>
           </span>
@@ -855,26 +873,26 @@ function ProductCard({ item, theme, onTheme, primary10, isAr, currency, fav, onF
 
 function MenuSkeleton() {
   return (
-    <div className="min-h-screen animate-pulse bg-white">
+    <div className="min-h-screen animate-pulse" style={{ backgroundColor: BG }}>
       <div className="flex justify-end px-4 pt-4">
-        <div className="h-8 w-20 rounded-full bg-gray-100" />
+        <div className="h-8 w-20 rounded-full bg-white/5" />
       </div>
-      <div className="mx-4 mt-2 h-36 rounded-xl bg-gray-100" />
-      <div className="mx-auto mt-5 h-5 w-44 rounded-full bg-gray-100" />
-      <div className="mx-auto mt-2 h-3.5 w-32 rounded-full bg-gray-100" />
-      <div className="mx-4 mt-5 h-10 rounded-full bg-gray-100" />
+      <div className="mx-4 mt-2 h-36 rounded-xl bg-white/5" />
+      <div className="mx-auto mt-5 h-5 w-44 rounded-full bg-white/5" />
+      <div className="mx-auto mt-2 h-3.5 w-32 rounded-full bg-white/5" />
+      <div className="mx-4 mt-5 h-10 rounded-full bg-white/5" />
       <div className="mt-3 flex gap-2 px-4">
         {[72, 88, 64, 80].map((w, i) => (
-          <div key={i} className="h-8 rounded-lg bg-gray-100" style={{ width: w }} />
+          <div key={i} className="h-8 rounded-lg bg-white/5" style={{ width: w }} />
         ))}
       </div>
-      <div className="mx-4 mt-5 h-20 rounded-md bg-gray-100" />
+      <div className="mx-4 mt-5 h-20 rounded-md bg-white/5" />
       <div className="mt-3 flex flex-wrap px-2.5">
         {Array.from({ length: 4 }).map((_, i) => (
           <div key={i} className="w-1/2 px-1.5 pb-5">
-            <div className="aspect-square rounded-lg bg-gray-100" />
-            <div className="mt-2 h-4 w-3/4 rounded bg-gray-100" />
-            <div className="mt-1.5 h-3 w-1/2 rounded bg-gray-100" />
+            <div className="aspect-square rounded-lg bg-white/5" />
+            <div className="mt-2 h-4 w-3/4 rounded bg-white/5" />
+            <div className="mt-1.5 h-3 w-1/2 rounded bg-white/5" />
           </div>
         ))}
       </div>
@@ -884,10 +902,10 @@ function MenuSkeleton() {
 
 function NotFound() {
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-white px-6 text-center">
-      <div className="rounded-3xl bg-gray-50 p-4 text-gray-300"><SearchX size={40} /></div>
-      <h1 className="mt-5 text-xl font-semibold text-gray-900">Menu not found</h1>
-      <p className="mt-1.5 max-w-xs text-sm text-gray-500">
+    <div className="flex min-h-screen flex-col items-center justify-center px-6 text-center" style={{ backgroundColor: BG }}>
+      <div className="rounded-3xl bg-white/5 p-4 text-gray-600"><SearchX size={40} /></div>
+      <h1 className="mt-5 text-xl font-semibold text-white">Menu not found</h1>
+      <p className="mt-1.5 max-w-xs text-sm text-gray-400">
         This menu link doesn't exist or the branch is currently inactive.
         <span className="font-arabic mt-1 block" dir="rtl">هذه القائمة غير موجودة أو الفرع غير نشط حالياً.</span>
       </p>

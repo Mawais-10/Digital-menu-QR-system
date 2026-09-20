@@ -97,6 +97,12 @@ body {
   background-size: 200% 100%;
   animation: shimmer 1.3s infinite linear;
 }
+/* Dark variant for the public menu */
+.menu-dark .shimmer {
+  background: linear-gradient(100deg, #1c1e21 40%, #26292c 50%, #1c1e21 60%);
+  background-size: 200% 100%;
+  animation: shimmer 1.3s infinite linear;
+}
 @keyframes shimmer {
   to { background-position: -200% 0; }
 }
