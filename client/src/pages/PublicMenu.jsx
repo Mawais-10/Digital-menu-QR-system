@@ -217,12 +217,14 @@ export default function PublicMenu() {
   /* ================= WELCOME SCREEN ================= */
   if (screen === 'welcome') {
     return (
+      {/* Fixed overlay pinned to the viewport — the page itself can never grow a scrollbar */}
       <div
         dir={isAr ? 'rtl' : 'ltr'}
-        className={`relative flex min-h-screen min-h-dvh flex-col justify-end ${isAr ? 'font-arabic' : ''}`}
+        className={`fixed inset-0 overflow-y-auto ${isAr ? 'font-arabic' : ''}`}
         style={{ background: `linear-gradient(180deg, ${theme} 0%, ${rgba(theme, 0.85)} 60%, ${rgba('#000000', 0.9)} 160%)` }}
       >
-        <div className="pattern-arabesque absolute inset-0 opacity-30" />
+        <div className="pattern-arabesque pointer-events-none fixed inset-0 opacity-30" />
+        <div className="relative flex min-h-full flex-col">
 
         {/* Brand block, centered */}
         <div className="relative flex flex-1 flex-col items-center justify-center px-6 py-8 text-center" style={{ color: onTheme }}>
@@ -280,6 +282,7 @@ export default function PublicMenu() {
           >
             {isAr ? 'عرض القائمة' : 'View Menu'}
           </button>
+        </div>
         </div>
       </div>
     );
