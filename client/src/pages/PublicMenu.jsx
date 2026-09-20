@@ -219,13 +219,13 @@ export default function PublicMenu() {
     return (
       <div
         dir={isAr ? 'rtl' : 'ltr'}
-        className={`relative flex min-h-screen flex-col justify-end overflow-hidden ${isAr ? 'font-arabic' : ''}`}
+        className={`relative flex min-h-screen min-h-dvh flex-col justify-end ${isAr ? 'font-arabic' : ''}`}
         style={{ background: `linear-gradient(180deg, ${theme} 0%, ${rgba(theme, 0.85)} 60%, ${rgba('#000000', 0.9)} 160%)` }}
       >
         <div className="pattern-arabesque absolute inset-0 opacity-30" />
 
         {/* Brand block, centered */}
-        <div className="relative flex flex-1 flex-col items-center justify-center px-6 text-center" style={{ color: onTheme }}>
+        <div className="relative flex flex-1 flex-col items-center justify-center px-6 py-8 text-center" style={{ color: onTheme }}>
           {restaurant.logoUrl ? (
             <SmartImage
               src={restaurant.logoUrl}
@@ -250,7 +250,10 @@ export default function PublicMenu() {
         </div>
 
         {/* Language circles + view menu */}
-        <div className="relative px-5 pb-8" style={{ color: onTheme }}>
+        <div
+          className="relative mx-auto w-full max-w-md px-5"
+          style={{ color: onTheme, paddingBottom: 'calc(2rem + env(safe-area-inset-bottom))' }}
+        >
           <div className="mb-4 flex items-center justify-center gap-3">
             {[
               { v: 'en', label: 'EN' },
@@ -485,7 +488,10 @@ export default function PublicMenu() {
 
       {/* ===== Bottom tab bar ===== */}
       <nav className="fixed inset-x-0 bottom-0 z-40 flex justify-center">
-        <div className="flex w-full max-w-md rounded-t-xl border-l border-r border-t border-gray-900/5 bg-white/90 backdrop-blur">
+        <div
+          className="flex w-full max-w-md rounded-t-xl border-l border-r border-t border-gray-900/5 bg-white/90 backdrop-blur"
+          style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
+        >
           {[
             { id: 'menu', icon: UtensilsCrossed, label: isAr ? 'القائمة' : 'Menu', onClick: () => { setTab('menu'); setSearch(''); window.scrollTo({ top: 0 }); } },
             { id: 'favorites', icon: Heart, label: isAr ? 'المفضلة' : 'Favorites', onClick: () => { setTab('favorites'); setSearch(''); window.scrollTo({ top: 0 }); }, count: favorites.length },
