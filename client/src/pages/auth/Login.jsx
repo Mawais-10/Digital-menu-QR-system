@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 // import { Link } from 'react-router-dom';            // RESTORE: needed by the full AuthShell version below
 // import AuthShell from './AuthShell.jsx';            // RESTORE: full split-screen login
-import { Button, Input, LogoMark } from '../../components/ui.jsx';
+import { Button, Input, LogoFull } from '../../components/ui.jsx';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { errMsg } from '../../api/client.js';
 
@@ -34,9 +34,8 @@ export default function Login() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-gray-50 px-5">
       <div className="w-full max-w-xs">
-        <div className="mb-8 flex flex-col items-center gap-3">
-          <LogoMark size={44} />
-          <span className="text-xl font-extrabold tracking-tight text-gray-900">DINEZA</span>
+        <div className="mb-8 flex justify-center">
+          <LogoFull className="h-28 w-auto" />
         </div>
 
         <form onSubmit={submit} className="space-y-4">

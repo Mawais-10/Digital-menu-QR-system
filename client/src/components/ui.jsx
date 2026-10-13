@@ -187,16 +187,18 @@ export function PageHeader({ title, subtitle, action }) {
   );
 }
 
+// DINEZA brand mark (assets live in client/public)
 export const LogoMark = ({ size = 34 }) => (
-  <div
-    className="flex items-center justify-center rounded-xl bg-brand-500 text-white shadow-sm shadow-brand-500/40"
+  <img
+    src="/dineza-icon.png"
+    alt="DINEZA"
+    draggable={false}
+    className="shrink-0 select-none object-contain"
     style={{ width: size, height: size }}
-  >
-    <svg width={size * 0.55} height={size * 0.55} viewBox="0 0 24 24" fill="none">
-      <rect x="3" y="3" width="7" height="7" rx="2" fill="currentColor" />
-      <rect x="14" y="3" width="7" height="7" rx="2" fill="currentColor" />
-      <rect x="3" y="14" width="7" height="7" rx="2" fill="currentColor" />
-      <rect x="15" y="15" width="5" height="5" rx="1.5" fill="currentColor" />
-    </svg>
-  </div>
+  />
+);
+
+// Full logo with wordmark and tagline
+export const LogoFull = ({ className = 'h-24 w-auto' }) => (
+  <img src="/dineza-logo.png" alt="DINEZA - Your Menu. One Scan Away." draggable={false} className={`select-none ${className}`} />
 );
