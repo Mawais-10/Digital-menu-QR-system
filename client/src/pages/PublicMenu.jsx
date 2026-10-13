@@ -24,6 +24,28 @@ function readableOn(hex) {
   }
 }
 
+function toRgb(hex) {
+  const c = String(hex || '').replace('#', '');
+  const full = c.length === 3 ? c.split('').map((x) => x + x).join('') : c;
+  const rgb = [0, 2, 4].map((i) => parseInt(full.slice(i, i + 2), 16));
+  return rgb.some(Number.isNaN) ? null : rgb;
+}
+
+// WCAG contrast ratio between two hex colors
+function contrast(a, b) {
+  const lum = (hex) => {
+    const rgb = toRgb(hex);
+    if (!rgb) return 0;
+    const [r, g, bl] = rgb.map((v) => {
+      const s = v / 255;
+      return s <= 0.03928 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4;
+    });
+    return 0.2126 * r + 0.7152 * g + 0.0722 * bl;
+  };
+  const [hi, lo] = [lum(a), lum(b)].sort((x, y) => y - x);
+  return (hi + 0.05) / (lo + 0.05);
+}
+
 function rgba(hex, a) {
   try {
     const c = hex.replace('#', '');
@@ -137,6 +159,9 @@ export default function PublicMenu() {
   const isAr = lang === 'ar';
   const theme = data?.restaurant.themeColor || '#F97316';
   const onTheme = readableOn(theme);
+  // Theme-colored text/icons sit on the dark menu surfaces: keep the brand color when it is
+  // readable there, otherwise use a light tone so a very dark theme never disappears
+  const accent = contrast(theme, SURFACE) >= 3 ? theme : '#E5E7EB';
   const name = useCallback(
     (obj, en, ar) => (isAr ? obj[ar] || obj[en] : obj[en] || obj[ar]),
     [isAr]
@@ -222,8 +247,18 @@ export default function PublicMenu() {
   if (status === 'notfound') return <NotFound />;
 
   const { restaurant, branch, categories } = data;
-  const primary10 = rgba(theme, 0.12);
-  const primary20 = rgba(theme, 0.22);
+  const primary10 = rgba(accent, 0.12);
+  const primary20 = rgba(accent, 0.22);
+
+  // Welcome screen controls sit on the theme color itself. Normally they are white with
+  // theme-colored text; on a light theme (e.g. white) that would be white-on-white, so invert.
+  const lightTheme = onTheme !== '#FFFFFF';
+  const welcomeSolid = lightTheme
+    ? { backgroundColor: BG, color: '#FFFFFF' }
+    : { backgroundColor: '#FFFFFF', color: contrast(theme, '#FFFFFF') >= 2.5 ? theme : BG }; // 2.5 keeps the classic orange-on-white look
+  const welcomeSoft = lightTheme
+    ? { backgroundColor: 'rgba(0,0,0,0.08)', color: onTheme }
+    : { backgroundColor: 'rgba(255,255,255,0.12)', color: onTheme };
 
   /* ================= WELCOME SCREEN ================= */
   if (screen === 'welcome') {
@@ -276,11 +311,8 @@ export default function PublicMenu() {
                 key={v}
                 onClick={() => switchLang(v)}
                 className={`flex h-10 w-10 items-center justify-center rounded-full text-sm font-semibold transition-all ${v === 'ar' ? 'font-arabic' : ''}`}
-                style={
-                  lang === v
-                    ? { backgroundColor: '#fff', color: theme }
-                    : { backgroundColor: 'rgba(255,255,255,0.12)', color: onTheme }
-                }
+                aria-pressed={lang === v}
+                style={lang === v ? welcomeSolid : welcomeSoft}
               >
                 {label}
               </button>
@@ -288,8 +320,8 @@ export default function PublicMenu() {
           </div>
           <button
             onClick={() => setScreen('menu')}
-            className="flex h-12 w-full items-center justify-center rounded-xl bg-white text-base font-semibold shadow-lift transition-transform active:scale-[0.98]"
-            style={{ color: theme }}
+            className="flex h-12 w-full items-center justify-center rounded-xl text-base font-semibold shadow-lift transition-transform active:scale-[0.98]"
+            style={welcomeSolid}
           >
             {isAr ? 'عرض القائمة' : 'View Menu'}
           </button>
@@ -319,7 +351,7 @@ export default function PublicMenu() {
           {restaurant.logoUrl ? (
             <img src={restaurant.logoUrl} alt="" className="h-7 w-auto max-w-[60px] rounded object-contain" />
           ) : (
-            <span className="text-sm font-bold" style={{ color: theme }}>{restaurant.nameEn[0]}</span>
+            <span className="text-sm font-bold" style={{ color: accent }}>{restaurant.nameEn[0]}</span>
           )}
         </button>
         <button
@@ -344,7 +376,7 @@ export default function PublicMenu() {
             {restaurant.logoUrl ? (
               <img src={restaurant.logoUrl} alt={restaurant.nameEn} className="h-24 w-auto max-w-[70%] object-contain drop-shadow" />
             ) : (
-              <UtensilsCrossed size={40} style={{ color: theme }} />
+              <UtensilsCrossed size={40} style={{ color: accent }} />
             )}
           </div>
         </div>
@@ -370,7 +402,7 @@ export default function PublicMenu() {
               style={{ backgroundColor: primary10 }}
             />
             <span className="absolute bottom-0 start-0 top-0 flex h-10 w-10 items-center justify-center">
-              <Search size={17} style={{ color: theme }} />
+              <Search size={17} style={{ color: accent }} />
             </span>
             {search && (
               <button
@@ -390,7 +422,7 @@ export default function PublicMenu() {
               className="flex h-full w-12 flex-shrink-0 items-center justify-center focus:outline-none"
               title="All categories"
             >
-              <LayoutGrid size={19} style={{ color: theme }} />
+              <LayoutGrid size={19} style={{ color: accent }} />
             </button>
             <div className="no-scrollbar relative flex h-full flex-1 items-center overflow-x-auto pe-4">
               {categories.map((c) => {
@@ -448,6 +480,7 @@ export default function PublicMenu() {
                     item={item}
                     theme={theme}
                     onTheme={onTheme}
+                    accent={accent}
                     primary10={primary10}
                     isAr={isAr}
                     currency={restaurant.currency}
@@ -488,6 +521,7 @@ export default function PublicMenu() {
                   item={item}
                   theme={theme}
                   onTheme={onTheme}
+                  accent={accent}
                   primary10={primary10}
                   isAr={isAr}
                   currency={restaurant.currency}
@@ -524,7 +558,7 @@ export default function PublicMenu() {
             return (
               <button key={id} onClick={onClick} className="flex min-w-[4rem] flex-1 cursor-pointer flex-col items-center py-2 transition">
                 <span className="relative">
-                  <Icon size={21} style={{ color: active ? theme : '#6B7280' }} fill={id === 'favorites' && count > 0 ? theme : 'none'} strokeWidth={id === 'favorites' && count > 0 ? 0 : 2} />
+                  <Icon size={21} style={{ color: active ? accent : '#6B7280' }} fill={id === 'favorites' && count > 0 ? accent : 'none'} strokeWidth={id === 'favorites' && count > 0 ? 0 : 2} />
                   {count > 0 && id !== 'menu' && (
                     <span
                       className="absolute -end-2 -top-1.5 flex min-h-[17px] min-w-[17px] items-center justify-center rounded-full px-1 text-[10px] font-semibold"
@@ -534,7 +568,7 @@ export default function PublicMenu() {
                     </span>
                   )}
                 </span>
-                <span className="mt-1 text-center text-xs font-medium" style={{ color: active ? theme : '#6B7280' }}>
+                <span className="mt-1 text-center text-xs font-medium" style={{ color: active ? accent : '#6B7280' }}>
                   {label}
                 </span>
               </button>
@@ -567,7 +601,7 @@ export default function PublicMenu() {
                   {name(c, 'nameEn', 'nameAr')}
                   <span
                     className="flex h-7 w-7 items-center justify-center rounded-full text-xs font-semibold"
-                    style={{ backgroundColor: primary10, color: theme }}
+                    style={{ backgroundColor: primary10, color: accent }}
                   >
                     {(itemsByCat.get(c.id) || []).length}
                   </span>
@@ -596,7 +630,7 @@ export default function PublicMenu() {
             <div className="space-y-2.5">
               {branch.address && (
                 <div className="flex items-start gap-3 rounded-xl px-3.5 py-3" style={{ backgroundColor: primary10 }}>
-                  <MapPin size={17} className="mt-0.5 shrink-0" style={{ color: theme }} />
+                  <MapPin size={17} className="mt-0.5 shrink-0" style={{ color: accent }} />
                   <span className="text-sm text-gray-200">{branch.address}</span>
                 </div>
               )}
@@ -642,7 +676,7 @@ export default function PublicMenu() {
                   <SmartImage src={detail.imageUrl} alt="" eager className="w-full" imgClassName="aspect-[4/3] w-full object-contain" />
                 ) : (
                   <div className="flex aspect-[16/9] w-full items-center justify-center rounded-t-xl" style={{ backgroundColor: primary10 }}>
-                    <UtensilsCrossed size={40} style={{ color: theme }} />
+                    <UtensilsCrossed size={40} style={{ color: accent }} />
                   </div>
                 )}
                 {detail.badgeText && (
@@ -673,7 +707,7 @@ export default function PublicMenu() {
                       style={
                         favorites.includes(detail.id)
                           ? { backgroundColor: theme, color: onTheme }
-                          : { backgroundColor: primary10, color: theme }
+                          : { backgroundColor: primary10, color: accent }
                       }
                     >
                       <Heart size={18} fill={favorites.includes(detail.id) ? 'currentColor' : 'none'} />
@@ -706,12 +740,12 @@ export default function PublicMenu() {
                   </button>
                 ) : (
                 <>
-                <div className="flex h-12 w-[7rem] shrink-0 items-center rounded-full border" style={{ borderColor: rgba(theme, 0.5) }}>
-                  <button onClick={() => setDetailQty((q) => Math.max(1, q - 1))} className="flex h-full flex-1 items-center justify-center" style={{ color: theme }}>
+                <div className="flex h-12 w-[7rem] shrink-0 items-center rounded-full border" style={{ borderColor: rgba(accent, 0.5) }}>
+                  <button onClick={() => setDetailQty((q) => Math.max(1, q - 1))} className="flex h-full flex-1 items-center justify-center" style={{ color: accent }}>
                     <Minus size={16} />
                   </button>
                   <span className="min-w-[25px] px-1 text-center text-sm font-semibold text-gray-100">{detailQty}</span>
-                  <button onClick={() => setDetailQty((q) => q + 1)} className="flex h-full flex-1 items-center justify-center" style={{ color: theme }}>
+                  <button onClick={() => setDetailQty((q) => q + 1)} className="flex h-full flex-1 items-center justify-center" style={{ color: accent }}>
                     <Plus size={16} />
                   </button>
                 </div>
@@ -765,7 +799,7 @@ export default function PublicMenu() {
                         {item.imageUrl ? (
                           <img src={item.imageUrl} alt="" className="absolute inset-0 h-full w-full rounded-md object-cover object-center" />
                         ) : (
-                          <span className="flex h-full items-center justify-center" style={{ color: theme }}><UtensilsCrossed size={20} /></span>
+                          <span className="flex h-full items-center justify-center" style={{ color: accent }}><UtensilsCrossed size={20} /></span>
                         )}
                       </div>
                       <div className="min-w-0 flex-1 px-3">
@@ -780,8 +814,8 @@ export default function PublicMenu() {
                         </div>
                         )}
                       </div>
-                      <div className="flex h-9 w-[5.5rem] shrink-0 items-center rounded-full border" style={{ borderColor: rgba(theme, 0.5) }}>
-                        <button onClick={() => setOrderQty(item.id, qty - 1)} className="flex h-full flex-1 items-center justify-center" style={{ color: theme }}>
+                      <div className="flex h-9 w-[5.5rem] shrink-0 items-center rounded-full border" style={{ borderColor: rgba(accent, 0.5) }}>
+                        <button onClick={() => setOrderQty(item.id, qty - 1)} className="flex h-full flex-1 items-center justify-center" style={{ color: accent }}>
                           <Minus size={13} />
                         </button>
                         <span className="min-w-[20px] text-center text-xs font-semibold text-gray-100">{qty}</span>
@@ -789,7 +823,7 @@ export default function PublicMenu() {
                           onClick={() => setOrderQty(item.id, qty + 1)}
                           disabled={item.soldOut}
                           className="flex h-full flex-1 items-center justify-center disabled:opacity-30"
-                          style={{ color: theme }}
+                          style={{ color: accent }}
                         >
                           <Plus size={13} />
                         </button>
@@ -807,7 +841,7 @@ export default function PublicMenu() {
                 <div className="border-t border-white/10 p-4 pb-6">
                   <div className="flex items-center justify-between">
                     <span className="text-base font-semibold text-white">{isAr ? 'المجموع' : 'Total'}</span>
-                    <span className="text-lg font-semibold" style={{ color: theme }}>
+                    <span className="text-lg font-semibold" style={{ color: accent }}>
                       {fmtPrice(orderTotal, restaurant.currency)} <span className="text-xs font-medium text-gray-500">{restaurant.currency}</span>
                     </span>
                   </div>
@@ -830,7 +864,7 @@ export default function PublicMenu() {
 }
 
 /* ---------- Product card: image with overlapping + button, flat body — reference style ---------- */
-function ProductCard({ item, theme, onTheme, primary10, isAr, currency, fav, onFav, onOpen, onAdd }) {
+function ProductCard({ item, theme, onTheme, accent, primary10, isAr, currency, fav, onFav, onOpen, onAdd }) {
   return (
     <div className="w-1/2 px-1.5 pb-5 md:w-1/3 lg:w-1/4 xl:w-1/5">
       <button onClick={onOpen} className="relative block w-full text-start">
@@ -843,7 +877,7 @@ function ProductCard({ item, theme, onTheme, primary10, isAr, currency, fav, onF
               imgClassName="h-full w-full object-contain p-1.5"
             />
           ) : (
-            <div className="flex h-full items-center justify-center" style={{ color: theme }}>
+            <div className="flex h-full items-center justify-center" style={{ color: accent }}>
               <UtensilsCrossed size={28} />
             </div>
           )}
@@ -863,7 +897,7 @@ function ProductCard({ item, theme, onTheme, primary10, isAr, currency, fav, onF
               onFav();
             }}
             className="absolute end-1.5 top-1.5 z-10 flex h-8 w-8 items-center justify-center rounded-full bg-black/50 shadow-sm backdrop-blur transition-transform active:scale-90"
-            style={{ color: fav ? theme : '#D1D5DB' }}
+            style={{ color: fav ? accent : '#D1D5DB' }}
           >
             <Heart size={15} fill={fav ? 'currentColor' : 'none'} />
           </span>
