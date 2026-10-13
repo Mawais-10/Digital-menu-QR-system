@@ -8,7 +8,7 @@ import sharp from 'sharp';
 // the watermark is light enough that the modules keep full contrast, so codes still scan.
 
 const LOGO_RATIO = 0.22; // centre logo bounding box as a fraction of the QR side
-const PAD_RATIO = 0.02; // clear gap between the centre logo and surrounding modules
+const PAD_RATIO = 0.045; // module-free gap around the centre logo
 const WATERMARK_RATIO = 0.72; // watermark bounding box as a fraction of the QR side
 const WATERMARK_STRENGTH = 0.11; // 0 = invisible, 1 = full colour
 const LOGO_CACHE_MS = 10 * 60 * 1000;
@@ -73,15 +73,19 @@ export async function renderQrPng(url, { size, dark, logo }) {
   const { width: lw, height: lh } = await sharp(logoPng).metadata();
   const cw = lw + pad * 2;
   const ch = lh + pad * 2;
-  const clearSvg = Buffer.from(
-    `<svg xmlns="http://www.w3.org/2000/svg" width="${cw}" height="${ch}"><rect width="${cw}" height="${ch}" fill="#FFFFFF"/></svg>`
+  const holeSvg = Buffer.from(
+    `<svg xmlns="http://www.w3.org/2000/svg" width="${cw}" height="${ch}"><rect width="${cw}" height="${ch}" fill="#000"/></svg>`
   );
+  // Remove the modules inside the logo footprint; the watermark underneath stays untouched
+  const modulesWithHole = await sharp(modules)
+    .composite([{ input: holeSvg, blend: 'dest-out', left: centre - Math.round(cw / 2), top: centre - Math.round(ch / 2) }])
+    .png()
+    .toBuffer();
 
   return sharp({ create: { width: size, height: size, channels: 3, background: '#FFFFFF' } })
     .composite([
       { input: wm, left: centre - Math.round(ww / 2), top: centre - Math.round(wh / 2) },
-      { input: modules, left: 0, top: 0 },
-      { input: clearSvg, left: centre - Math.round(cw / 2), top: centre - Math.round(ch / 2) },
+      { input: modulesWithHole, left: 0, top: 0 },
       { input: logoPng, left: centre - Math.round(lw / 2), top: centre - Math.round(lh / 2) },
     ])
     .png()
@@ -113,10 +117,13 @@ export async function renderQrSvg(url, { size, dark, logo }) {
   const under =
     `<rect width="${n}" height="${n}" fill="#FFFFFF"/>` +
     `<image x="${f(c - wmBox.w / 2)}" y="${f(c - wmBox.h / 2)}" width="${f(wmBox.w)}" height="${f(wmBox.h)}" opacity="${WATERMARK_STRENGTH}" href="data:image/png;base64,${logo64}" preserveAspectRatio="xMidYMid meet"/>`;
+  const mask =
+    `<defs><mask id="qr-hole"><rect width="${n}" height="${n}" fill="#fff"/>` +
+    `<rect x="${f(c - lg.w / 2 - pad)}" y="${f(c - lg.h / 2 - pad)}" width="${f(lg.w + pad * 2)}" height="${f(lg.h + pad * 2)}" fill="#000"/></mask></defs>`;
   const over =
-    `<rect x="${f(c - lg.w / 2 - pad)}" y="${f(c - lg.h / 2 - pad)}" width="${f(lg.w + pad * 2)}" height="${f(lg.h + pad * 2)}" fill="#FFFFFF"/>` +
     `<image x="${f(c - lg.w / 2)}" y="${f(c - lg.h / 2)}" width="${f(lg.w)}" height="${f(lg.h)}" href="data:image/png;base64,${logo64}" preserveAspectRatio="xMidYMid meet"/>`;
 
   const openEnd = open.index + open[0].length;
-  return svg.slice(0, openEnd) + under + svg.slice(openEnd).replace(/<\/svg>\s*$/, `${over}</svg>`);
+  const body = svg.slice(openEnd).replace(/<\/svg>\s*$/, '');
+  return `${svg.slice(0, openEnd)}${mask}${under}<g mask="url(#qr-hole)">${body}</g>${over}</svg>`;
 }
