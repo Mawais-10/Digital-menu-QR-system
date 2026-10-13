@@ -2,6 +2,8 @@ import Restaurant from '../models/Restaurant.js';
 import Branch from '../models/Branch.js';
 import MenuItem from '../models/MenuItem.js';
 import Category from '../models/Category.js';
+import BranchItem from '../models/BranchItem.js';
+import User from '../models/User.js';
 import { HttpError } from '../middleware/error.js';
 import { processImage, deleteImage } from '../middleware/upload.js';
 
@@ -73,10 +75,24 @@ export async function uploadLogo(req, res) {
 
 export async function stats(req, res) {
   const restaurantId = req.user.restaurantId;
-  const [branches, items, categories] = await Promise.all([
-    Branch.countDocuments({ restaurantId }),
+  const branchList = await Branch.find({ restaurantId }).select('_id');
+  const branchIds = branchList.map((b) => b._id);
+  const [items, categories, managers, soldOutRows] = await Promise.all([
     MenuItem.countDocuments({ restaurantId }),
     Category.countDocuments({ restaurantId }),
+    User.countDocuments({ restaurantId, role: 'branch_manager' }),
+    BranchItem.aggregate([
+      { $match: { branchId: { $in: branchIds }, isSoldOut: true, isAvailable: { $ne: false } } },
+      { $group: { _id: '$branchId', count: { $sum: 1 } } },
+    ]),
   ]);
-  res.json({ branches, items, categories });
+  const soldOutByBranch = Object.fromEntries(soldOutRows.map((r) => [r._id.toString(), r.count]));
+  res.json({
+    branches: branchList.length,
+    items,
+    categories,
+    managers,
+    soldOut: soldOutRows.reduce((sum, r) => sum + r.count, 0),
+    soldOutByBranch,
+  });
 }

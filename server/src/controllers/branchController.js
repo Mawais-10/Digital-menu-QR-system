@@ -1,12 +1,13 @@
 import Branch from '../models/Branch.js';
 import BranchItem from '../models/BranchItem.js';
-import MenuItem from '../models/MenuItem.js';
 import Restaurant from '../models/Restaurant.js';
+import User from '../models/User.js';
+import { branchRows, updateBranchItemState } from '../services/branchAvailability.js';
 import { HttpError } from '../middleware/error.js';
 import { uniqueBranchSlug } from '../utils/slugify.js';
 import { env } from '../config/env.js';
 
-function menuUrl(slug) {
+export function menuUrl(slug) {
   return `${env.publicBaseUrl}/menu/${slug}`;
 }
 
@@ -101,6 +102,8 @@ export async function updateBranch(req, res) {
 export async function deleteBranch(req, res) {
   const branch = await ownedBranch(req);
   await BranchItem.deleteMany({ branchId: branch._id });
+  // A branch manager account only exists for its branch; remove it with the branch
+  await User.deleteMany({ role: 'branch_manager', branchId: branch._id, restaurantId: req.user.restaurantId });
   await branch.deleteOne();
   res.json({ ok: true });
 }
@@ -108,47 +111,16 @@ export async function deleteBranch(req, res) {
 // Availability matrix: every master item merged with this branch's overrides
 export async function listBranchItems(req, res) {
   const branch = await ownedBranch(req);
-  const [items, overrides] = await Promise.all([
-    MenuItem.find({ restaurantId: req.user.restaurantId }).sort({ sortOrder: 1, createdAt: 1 }).populate('categoryId', 'nameEn nameAr sortOrder'),
-    BranchItem.find({ branchId: branch._id }),
-  ]);
-  const byItem = new Map(overrides.map((o) => [o.itemId.toString(), o]));
-  const merged = items.map((item) => {
-    const o = byItem.get(item._id.toString());
-    return {
-      item,
-      isAvailable: o ? o.isAvailable : true,
-      customPrice: o?.customPrice ?? null,
-      effectivePrice: o?.customPrice ?? item.basePrice,
-    };
-  });
-  res.json({ branch: { id: branch._id, nameEn: branch.nameEn, slug: branch.slug }, items: merged });
+  const items = await branchRows(branch);
+  res.json({ branch: { id: branch._id, nameEn: branch.nameEn, slug: branch.slug }, items });
 }
 
+// Brand manager: visibility, sold out and branch price for any of their branches
 export async function updateBranchItem(req, res) {
   const branch = await ownedBranch(req);
-  const item = await MenuItem.findOne({ _id: req.params.itemId, restaurantId: req.user.restaurantId });
-  if (!item) throw new HttpError(404, 'Menu item not found');
-
-  const { isAvailable, customPrice } = req.body || {};
-  const update = {};
-  if (isAvailable !== undefined) update.isAvailable = !!isAvailable;
-  if (customPrice !== undefined) {
-    if (customPrice !== null && (typeof customPrice !== 'number' || customPrice < 0)) {
-      throw new HttpError(400, 'Custom price must be a non-negative number or null');
-    }
-    update.customPrice = customPrice;
-  }
-
-  const override = await BranchItem.findOneAndUpdate(
-    { branchId: branch._id, itemId: item._id },
-    { $set: update, $setOnInsert: { branchId: branch._id, itemId: item._id } },
-    { new: true, upsert: true }
-  );
-  res.json({
-    itemId: item._id,
-    isAvailable: override.isAvailable,
-    customPrice: override.customPrice,
-    effectivePrice: override.customPrice ?? item.basePrice,
+  const result = await updateBranchItemState(branch, req.params.itemId, req.body, {
+    userId: req.user._id,
+    allowPrice: true,
   });
+  res.json(result);
 }

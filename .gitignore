@@ -6,3 +6,6 @@ dist/
 
 # personal documents, never commit
 itern/
+
+# Locally installed AI design skills (UI UX Pro Max), not app code
+.claude/skills/

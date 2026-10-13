@@ -17,7 +17,8 @@ export function errorHandler(err, req, res, next) { // eslint-disable-line no-un
     const tooBig = err.field === 'file' ? 'File too large (max 40MB)' : 'Image too large (max 8MB)';
     return res.status(400).json({ message: err.code === 'LIMIT_FILE_SIZE' ? tooBig : err.message });
   }
-  console.error('[error]', err);
+  // Expected refusals (4xx) are part of normal traffic; only log real server faults
+  if (!err.status || err.status >= 500) console.error('[error]', err);
   res.status(err.status || 500).json({ message: err.status ? err.message : 'Something went wrong' });
 }
 

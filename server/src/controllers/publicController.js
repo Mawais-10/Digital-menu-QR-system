@@ -38,6 +38,8 @@ export async function publicMenu(req, res) {
         imageUrl: item.imageUrl,
         price: o?.customPrice ?? item.basePrice,
         badgeText: item.badgeText,
+        // Shown on the menu but cannot be ordered at this branch right now
+        soldOut: o?.isSoldOut === true,
       };
     });
 

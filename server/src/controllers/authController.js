@@ -40,6 +40,9 @@ export async function login(req, res) {
   if (!user || !(await bcrypt.compare(password || '', user.passwordHash))) {
     throw new HttpError(401, 'Invalid email or password');
   }
+  if (user.isActive === false) {
+    throw new HttpError(403, 'This account has been deactivated. Contact your brand manager.');
+  }
   const accessToken = await issueSession(res, user);
   res.json({ accessToken, user: user.toSafeJSON() });
 }
@@ -56,6 +59,9 @@ export async function refresh(req, res) {
   const user = await User.findById(payload.sub);
   if (!user || user.refreshTokenHash !== hashToken(token)) {
     throw new HttpError(401, 'Refresh token revoked');
+  }
+  if (user.isActive === false) {
+    throw new HttpError(401, 'This account has been deactivated');
   }
   // Issue a fresh access token WITHOUT rotating the refresh cookie — rotation made
   // parallel refreshes (second tab, remounted app) race each other into a logout.
