@@ -380,14 +380,14 @@ export function Tabs({ tabs, value, onChange, label, idBase, className = '' }) {
 /* ---------- Display ---------- */
 
 const BADGE_COLORS = {
-  orange: 'bg-amber-50 text-amber-800 ring-amber-200',
+  orange: 'bg-brand-50 text-brand-800 ring-brand-200',
   green: 'bg-brand-50 text-brand-800 ring-brand-200',
   gray: 'bg-gray-100 text-gray-700 ring-gray-200',
   red: 'bg-red-50 text-red-700 ring-red-200',
   amber: 'bg-amber-50 text-amber-800 ring-amber-200',
   blue: 'bg-sky-50 text-sky-800 ring-sky-200',
 };
-const DOT_COLORS = { orange: 'bg-amber-500', green: 'bg-brand-600', gray: 'bg-gray-400', red: 'bg-red-500', amber: 'bg-amber-500', blue: 'bg-sky-500' };
+const DOT_COLORS = { orange: 'bg-brand-500', green: 'bg-brand-600', gray: 'bg-gray-400', red: 'bg-red-500', amber: 'bg-amber-500', blue: 'bg-sky-500' };
 
 export function Badge({ children, color = 'orange', dot, className = '' }) {
   return (

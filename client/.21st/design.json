@@ -128,7 +128,7 @@
   "constraints": {
     "must": [
       "Dashboard only: the customer QR menu (/menu/:slug) keeps its own dark design and must not import ui.jsx or motion",
-      "System palette is pistachio (brand-300) on evergreen (brand-950): primary actions are brand-300 with brand-950 text; sidebar is brand-950; green text/links use brand-700; status colors stay in the brand green family",
+      "Green replaces orange only where orange was: primary buttons brand-300 with brand-950 text, active nav pill brand-100, links/green text brand-700. Sidebar, page background, notifications and neutral chips stay white/gray.",
       "Every menu photo renders through ImageFrame (object-contain by default, fixed aspect ratio)",
       "Icon-only buttons use IconButton with a label; switches use Toggle with a label",
       "Visible :focus-visible outline on all controls (.dash / .dash-portal scopes)"
@@ -151,6 +151,11 @@
       "date": "2026-10-13",
       "decision": "Replaced the orange system color with a premium pistachio light green + deep evergreen palette (evergreen sidebar, pistachio active pill and primary buttons, sage-tinted page background). Customer menus keep each restaurant theme.",
       "source": "user request; ui-ux-pro-max premium palette guidance (dark anchor + single refined accent + warm off-white)"
+    },
+    {
+      "date": "2026-10-13",
+      "decision": "User reverted the evergreen sidebar: keep the white sidebar and gray surfaces; green only where orange used to be.",
+      "source": "user feedback"
     }
   ],
   "evidence": [

@@ -26,7 +26,7 @@ const LAYOUT_OPTIONS = [
 // Tiny schematic preview of each public-menu card template
 function LayoutPreview({ type }) {
   const banner = <div className="h-1.5 rounded-sm bg-brand-400" />;
-  const photo = <div className="mt-0.5 flex-1 rounded-sm bg-gray-200/80" />;
+  const photo = <div className="mt-0.5 flex-1 rounded-sm bg-brand-100/80" />;
   const cell = (content, key) => (
     <div key={key} className="flex flex-1 flex-col rounded-md bg-gray-100 p-0.5">{content}</div>
   );
@@ -36,7 +36,7 @@ function LayoutPreview({ type }) {
       {type === 'large' && cell(
         <>
           {banner}
-          <div className="relative mt-0.5 flex-1 rounded-sm bg-gray-200/80">
+          <div className="relative mt-0.5 flex-1 rounded-sm bg-brand-100/80">
             <span className="absolute right-0.5 top-1/2 h-3 w-3 -translate-y-1/2 rounded-full bg-brand-500" />
           </div>
         </>
@@ -46,7 +46,7 @@ function LayoutPreview({ type }) {
         <div className="flex flex-col gap-0.5">
           {[0, 1].map((i) => (
             <div key={i} className="flex flex-1 items-center gap-0.5 rounded-sm bg-white p-0.5">
-              <span className="h-full w-3 rounded-sm bg-gray-200" />
+              <span className="h-full w-3 rounded-sm bg-brand-100" />
               <span className="h-1 flex-1 rounded-sm bg-gray-200" />
               <span className="h-2 w-2.5 rounded-sm bg-brand-500" />
             </div>
@@ -54,7 +54,7 @@ function LayoutPreview({ type }) {
         </div>
       )}
       {type === 'hero' && cell(
-        <div className="relative flex-1 overflow-hidden rounded-sm bg-gray-300/80">
+        <div className="relative flex-1 overflow-hidden rounded-sm bg-brand-200/80">
           <span className="absolute inset-x-0 bottom-0 h-2.5 bg-gradient-to-t from-gray-700/80 to-transparent" />
           <span className="absolute bottom-0.5 left-0.5 h-1 w-5 rounded-sm bg-white/90" />
           <span className="absolute bottom-0.5 right-0.5 h-1.5 w-2.5 rounded-sm bg-brand-500" />
@@ -262,7 +262,7 @@ export default function MenuManagement() {
                     aria-pressed={active}
                     className={cx(
                       'inline-flex h-9 cursor-pointer items-center gap-2 rounded-full border px-3.5 text-[13px] font-semibold transition-colors duration-150',
-                      active ? 'border-brand-950 bg-brand-950 text-white' : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300 hover:bg-gray-50'
+                      active ? 'border-gray-900 bg-gray-900 text-white' : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300 hover:bg-gray-50'
                     )}
                   >
                     {c.nameEn}

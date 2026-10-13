@@ -43,7 +43,7 @@ export function ToastProvider({ children }) {
             key={t.id}
             role={t.type === 'error' ? 'alert' : 'status'}
             className={`animate-pop pointer-events-auto flex items-start gap-2.5 rounded-xl px-4 py-3 text-sm font-medium text-white shadow-pop ${
-              t.type === 'error' ? 'bg-red-600' : 'bg-brand-950'
+              t.type === 'error' ? 'bg-red-600' : 'bg-gray-900'
             }`}
           >
             {t.type === 'error' ? (
