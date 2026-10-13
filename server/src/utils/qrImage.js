@@ -1,12 +1,12 @@
 import QRCode from 'qrcode';
 import sharp from 'sharp';
 
-// Branded QR rendering: the restaurant logo sits on a white rounded plate in the
-// centre of the code. Error correction is H (30% recoverable) and the plate covers
-// ~6% of the area, which leaves a comfortable scanning margin.
+// Branded QR rendering: the restaurant logo sits in the centre of the code with only
+// its own footprint cleared (no plate shape). Error correction is H (30% recoverable)
+// and the cleared area stays well under that, so the code keeps scanning.
 
-const PLATE_RATIO = 0.26; // plate side as a fraction of the full QR side
-const LOGO_RATIO = 0.20; // logo bounding box as a fraction of the full QR side
+const LOGO_RATIO = 0.22; // logo bounding box as a fraction of the full QR side
+const PAD_RATIO = 0.02; // clear gap between the logo and the surrounding modules
 const LOGO_CACHE_MS = 10 * 60 * 1000;
 const logoCache = new Map(); // url -> { at, png }
 
@@ -46,20 +46,22 @@ export async function renderQrPng(url, { size, dark, logo }) {
   const qr = await QRCode.toBuffer(url, { ...baseOptions(dark), type: 'png', width: size });
   if (!logo) return qr;
 
-  const plate = Math.round(size * PLATE_RATIO);
   const box = Math.round(size * LOGO_RATIO);
-  const radius = Math.round(plate * 0.18);
-  const plateSvg = Buffer.from(
-    `<svg xmlns="http://www.w3.org/2000/svg" width="${plate}" height="${plate}"><rect width="${plate}" height="${plate}" rx="${radius}" fill="#FFFFFF"/></svg>`
-  );
+  const pad = Math.round(size * PAD_RATIO);
   const logoPng = await sharp(logo).resize(box, box, { fit: 'inside' }).png().toBuffer();
-  const logoMeta = await sharp(logoPng).metadata();
+  const { width: lw, height: lh } = await sharp(logoPng).metadata();
+  // Clear only the logo's own footprint (plus a small gap), no visible plate shape
+  const cw = lw + pad * 2;
+  const ch = lh + pad * 2;
+  const clearSvg = Buffer.from(
+    `<svg xmlns="http://www.w3.org/2000/svg" width="${cw}" height="${ch}"><rect width="${cw}" height="${ch}" fill="#FFFFFF"/></svg>`
+  );
   const centre = Math.round(size / 2);
 
   return sharp(qr)
     .composite([
-      { input: plateSvg, left: centre - Math.round(plate / 2), top: centre - Math.round(plate / 2) },
-      { input: logoPng, left: centre - Math.round(logoMeta.width / 2), top: centre - Math.round(logoMeta.height / 2) },
+      { input: clearSvg, left: centre - Math.round(cw / 2), top: centre - Math.round(ch / 2) },
+      { input: logoPng, left: centre - Math.round(lw / 2), top: centre - Math.round(lh / 2) },
     ])
     .png()
     .toBuffer();
@@ -73,15 +75,15 @@ export async function renderQrSvg(url, { size, dark, logo }) {
   const vb = /viewBox="0 0 (\d+(?:\.\d+)?) (\d+(?:\.\d+)?)"/.exec(svg);
   if (!vb) return svg;
   const n = parseFloat(vb[1]);
-  const plate = n * PLATE_RATIO;
   const box = n * LOGO_RATIO;
+  const pad = n * PAD_RATIO;
   const meta = await sharp(logo).metadata();
   const scale = Math.min(box / meta.width, box / meta.height);
   const w = meta.width * scale;
   const h = meta.height * scale;
   const c = n / 2;
   const overlay =
-    `<rect x="${(c - plate / 2).toFixed(3)}" y="${(c - plate / 2).toFixed(3)}" width="${plate.toFixed(3)}" height="${plate.toFixed(3)}" rx="${(plate * 0.18).toFixed(3)}" fill="#FFFFFF"/>` +
+    `<rect x="${(c - w / 2 - pad).toFixed(3)}" y="${(c - h / 2 - pad).toFixed(3)}" width="${(w + pad * 2).toFixed(3)}" height="${(h + pad * 2).toFixed(3)}" fill="#FFFFFF"/>` +
     `<image x="${(c - w / 2).toFixed(3)}" y="${(c - h / 2).toFixed(3)}" width="${w.toFixed(3)}" height="${h.toFixed(3)}" href="data:image/png;base64,${logo.toString('base64')}" preserveAspectRatio="xMidYMid meet"/>`;
   return svg.replace(/<\/svg>\s*$/, `${overlay}</svg>`);
 }
