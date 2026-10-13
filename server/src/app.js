@@ -19,7 +19,10 @@ app.use(express.json({ limit: '1mb' }));
 app.use(cookieParser());
 if (env.nodeEnv === 'development') app.use(morgan('dev'));
 
-app.get('/api/health', (req, res) => res.json({ ok: true }));
+// Railway injects RAILWAY_GIT_COMMIT_SHA, which lets us confirm which build is live
+app.get('/api/health', (req, res) =>
+  res.json({ ok: true, commit: (process.env.RAILWAY_GIT_COMMIT_SHA || '').slice(0, 7) || undefined })
+);
 app.use('/api', routes);
 
 app.use(notFound);
