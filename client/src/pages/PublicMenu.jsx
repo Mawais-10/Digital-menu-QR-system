@@ -806,7 +806,7 @@ function ProductCard({ item, theme, onTheme, primary10, isAr, currency, fav, onF
               src={item.imageUrl}
               alt={item.nameEn}
               className="h-full w-full"
-              imgClassName="h-full w-full object-cover"
+              imgClassName="h-full w-full object-contain p-1.5"
             />
           ) : (
             <div className="flex h-full items-center justify-center" style={{ color: theme }}>
