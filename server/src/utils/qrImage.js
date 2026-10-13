@@ -1,12 +1,16 @@
 import QRCode from 'qrcode';
 import sharp from 'sharp';
 
-// Branded QR rendering: the restaurant logo sits in the centre of the code with only
-// its own footprint cleared (no plate shape). Error correction is H (30% recoverable)
-// and the cleared area stays well under that, so the code keeps scanning.
+// Branded QR rendering, modelled on printed café QR boards:
+//  - a faint, enlarged copy of the logo sits behind the whole code (watermark)
+//  - the sharp logo sits in the centre with only its own footprint cleared
+// Error correction is H (30% recoverable); the cleared centre stays well under that and
+// the watermark is light enough that the modules keep full contrast, so codes still scan.
 
-const LOGO_RATIO = 0.22; // logo bounding box as a fraction of the full QR side
-const PAD_RATIO = 0.02; // clear gap between the logo and the surrounding modules
+const LOGO_RATIO = 0.22; // centre logo bounding box as a fraction of the QR side
+const PAD_RATIO = 0.02; // clear gap between the centre logo and surrounding modules
+const WATERMARK_RATIO = 0.72; // watermark bounding box as a fraction of the QR side
+const WATERMARK_STRENGTH = 0.11; // 0 = invisible, 1 = full colour
 const LOGO_CACHE_MS = 10 * 60 * 1000;
 const logoCache = new Map(); // url -> { at, png }
 
@@ -21,7 +25,7 @@ export async function loadLogo(url) {
     const res = await fetch(url, { signal: ctrl.signal });
     if (!res.ok) return null;
     const raw = Buffer.from(await res.arrayBuffer());
-    // Trim empty margins (transparent or flat colour) so the mark fills the plate
+    // Trim empty margins (transparent or flat colour) so the mark fills its box
     let trimmed;
     try {
       trimmed = await sharp(raw).trim({ threshold: 12 }).toBuffer();
@@ -38,28 +42,45 @@ export async function loadLogo(url) {
   }
 }
 
-function baseOptions(dark) {
-  return { errorCorrectionLevel: 'H', margin: 2, color: { dark, light: '#FFFFFF' } };
+function baseOptions(dark, light = '#FFFFFF') {
+  return { errorCorrectionLevel: 'H', margin: 2, color: { dark, light } };
+}
+
+// Faint version of the logo on white: flatten, then pull every pixel most of the way to white.
+async function faintLogo(logo, box) {
+  const k = WATERMARK_STRENGTH;
+  return sharp(logo)
+    .resize(box, box, { fit: 'inside' })
+    .flatten({ background: '#FFFFFF' })
+    .linear([k, k, k], [255 * (1 - k), 255 * (1 - k), 255 * (1 - k)])
+    .png()
+    .toBuffer();
 }
 
 export async function renderQrPng(url, { size, dark, logo }) {
-  const qr = await QRCode.toBuffer(url, { ...baseOptions(dark), type: 'png', width: size });
-  if (!logo) return qr;
+  if (!logo) return QRCode.toBuffer(url, { ...baseOptions(dark), type: 'png', width: size });
+
+  // Modules on a transparent background, so the watermark can sit underneath
+  const modules = await QRCode.toBuffer(url, { ...baseOptions(dark, '#FFFFFF00'), type: 'png', width: size });
+  const centre = Math.round(size / 2);
+
+  const wm = await faintLogo(logo, Math.round(size * WATERMARK_RATIO));
+  const { width: ww, height: wh } = await sharp(wm).metadata();
 
   const box = Math.round(size * LOGO_RATIO);
   const pad = Math.round(size * PAD_RATIO);
   const logoPng = await sharp(logo).resize(box, box, { fit: 'inside' }).png().toBuffer();
   const { width: lw, height: lh } = await sharp(logoPng).metadata();
-  // Clear only the logo's own footprint (plus a small gap), no visible plate shape
   const cw = lw + pad * 2;
   const ch = lh + pad * 2;
   const clearSvg = Buffer.from(
     `<svg xmlns="http://www.w3.org/2000/svg" width="${cw}" height="${ch}"><rect width="${cw}" height="${ch}" fill="#FFFFFF"/></svg>`
   );
-  const centre = Math.round(size / 2);
 
-  return sharp(qr)
+  return sharp({ create: { width: size, height: size, channels: 3, background: '#FFFFFF' } })
     .composite([
+      { input: wm, left: centre - Math.round(ww / 2), top: centre - Math.round(wh / 2) },
+      { input: modules, left: 0, top: 0 },
       { input: clearSvg, left: centre - Math.round(cw / 2), top: centre - Math.round(ch / 2) },
       { input: logoPng, left: centre - Math.round(lw / 2), top: centre - Math.round(lh / 2) },
     ])
@@ -68,22 +89,34 @@ export async function renderQrPng(url, { size, dark, logo }) {
 }
 
 export async function renderQrSvg(url, { size, dark, logo }) {
-  const svg = await QRCode.toString(url, { ...baseOptions(dark), type: 'svg', width: size });
-  if (!logo) return svg;
+  if (!logo) return QRCode.toString(url, { ...baseOptions(dark), type: 'svg', width: size });
 
-  // qrcode's SVG uses a square viewBox in module units: "0 0 N N"
+  // Transparent light colour: qrcode then emits only the dark-module path
+  const svg = await QRCode.toString(url, { ...baseOptions(dark, '#FFFFFF00'), type: 'svg', width: size });
   const vb = /viewBox="0 0 (\d+(?:\.\d+)?) (\d+(?:\.\d+)?)"/.exec(svg);
-  if (!vb) return svg;
+  const open = /<svg[^>]*>/.exec(svg);
+  if (!vb || !open) return svg;
   const n = parseFloat(vb[1]);
-  const box = n * LOGO_RATIO;
-  const pad = n * PAD_RATIO;
-  const meta = await sharp(logo).metadata();
-  const scale = Math.min(box / meta.width, box / meta.height);
-  const w = meta.width * scale;
-  const h = meta.height * scale;
   const c = n / 2;
-  const overlay =
-    `<rect x="${(c - w / 2 - pad).toFixed(3)}" y="${(c - h / 2 - pad).toFixed(3)}" width="${(w + pad * 2).toFixed(3)}" height="${(h + pad * 2).toFixed(3)}" fill="#FFFFFF"/>` +
-    `<image x="${(c - w / 2).toFixed(3)}" y="${(c - h / 2).toFixed(3)}" width="${w.toFixed(3)}" height="${h.toFixed(3)}" href="data:image/png;base64,${logo.toString('base64')}" preserveAspectRatio="xMidYMid meet"/>`;
-  return svg.replace(/<\/svg>\s*$/, `${overlay}</svg>`);
+  const meta = await sharp(logo).metadata();
+  const fit = (boxSide) => {
+    const s = Math.min(boxSide / meta.width, boxSide / meta.height);
+    return { w: meta.width * s, h: meta.height * s };
+  };
+  const logo64 = logo.toString('base64');
+
+  const wmBox = fit(n * WATERMARK_RATIO);
+  const lg = fit(n * LOGO_RATIO);
+  const pad = n * PAD_RATIO;
+  const f = (x) => x.toFixed(3);
+
+  const under =
+    `<rect width="${n}" height="${n}" fill="#FFFFFF"/>` +
+    `<image x="${f(c - wmBox.w / 2)}" y="${f(c - wmBox.h / 2)}" width="${f(wmBox.w)}" height="${f(wmBox.h)}" opacity="${WATERMARK_STRENGTH}" href="data:image/png;base64,${logo64}" preserveAspectRatio="xMidYMid meet"/>`;
+  const over =
+    `<rect x="${f(c - lg.w / 2 - pad)}" y="${f(c - lg.h / 2 - pad)}" width="${f(lg.w + pad * 2)}" height="${f(lg.h + pad * 2)}" fill="#FFFFFF"/>` +
+    `<image x="${f(c - lg.w / 2)}" y="${f(c - lg.h / 2)}" width="${f(lg.w)}" height="${f(lg.h)}" href="data:image/png;base64,${logo64}" preserveAspectRatio="xMidYMid meet"/>`;
+
+  const openEnd = open.index + open[0].length;
+  return svg.slice(0, openEnd) + under + svg.slice(openEnd).replace(/<\/svg>\s*$/, `${over}</svg>`);
 }
