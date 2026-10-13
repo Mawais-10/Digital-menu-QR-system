@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef, useMemo } from 'react';
 import {
   Plus, Pencil, Trash2, ChevronLeft, ChevronRight, ImageIcon, UtensilsCrossed, LayoutGrid, Upload,
+  FileSpreadsheet, Download, CheckCircle2, AlertTriangle, FileUp,
 } from 'lucide-react';
 import {
   Button, Input, Textarea, Select, Modal, ConfirmDialog, Toggle, Badge, Card, Spinner, EmptyState, PageHeader,
@@ -93,6 +94,7 @@ export default function MenuManagement() {
   const [itemModal, setItemModal] = useState(null); // null | {mode:'create'} | {mode:'edit', item}
   const [itemDelete, setItemDelete] = useState(null);
   const [deleting, setDeleting] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
 
   const load = async () => {
     const [c, i] = await Promise.all([categoryApi.list(), itemApi.list()]);
@@ -201,7 +203,8 @@ export default function MenuManagement() {
         title="Master Menu"
         subtitle="One menu shared across all branches — control visibility per branch"
         action={
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
+            <Button variant="secondary" onClick={() => setImportOpen(true)}><FileSpreadsheet size={16} /> Import Excel</Button>
             <Button variant="secondary" onClick={openCatCreate}><LayoutGrid size={16} /> New category</Button>
             <Button onClick={() => setItemModal({ mode: 'create' })} disabled={categories.length === 0}>
               <Plus size={16} /> New item
@@ -215,7 +218,12 @@ export default function MenuManagement() {
           icon={LayoutGrid}
           title="Start with a category"
           subtitle='Categories group your menu — e.g. "Sandwiches", "Burgers", "Drinks". Add your first one.'
-          action={<Button onClick={openCatCreate}><Plus size={16} /> Add category</Button>}
+          action={
+            <div className="flex flex-wrap justify-center gap-2">
+              <Button onClick={openCatCreate}><Plus size={16} /> Add category</Button>
+              <Button variant="secondary" onClick={() => setImportOpen(true)}><FileSpreadsheet size={16} /> Import Excel</Button>
+            </div>
+          }
         />
       ) : (
         <>
@@ -395,6 +403,8 @@ export default function MenuManagement() {
         />
       )}
 
+      {importOpen && <ImportDialog onClose={() => setImportOpen(false)} onDone={load} />}
+
       <ConfirmDialog
         open={!!catDelete}
         onClose={() => setCatDelete(null)}
@@ -529,6 +539,166 @@ function ItemEditor({ mode, item, categories, defaultCategory, currency, onClose
           <Button type="submit" loading={saving}>{mode === 'edit' ? 'Save changes' : 'Add item'}</Button>
         </div>
       </form>
+    </Modal>
+  );
+}
+
+function ImportDialog({ onClose, onDone }) {
+  const toast = useToast();
+  const [file, setFile] = useState(null);
+  const [importing, setImporting] = useState(false);
+  const [downloading, setDownloading] = useState(false);
+  const [dragging, setDragging] = useState(false);
+  const [result, setResult] = useState(null); // { summary } | { message, errors }
+  const fileRef = useRef();
+
+  const downloadTemplate = async () => {
+    setDownloading(true);
+    try {
+      await itemApi.downloadTemplate();
+    } catch (err) {
+      toast.error(errMsg(err));
+    } finally {
+      setDownloading(false);
+    }
+  };
+
+  const pick = (f) => {
+    if (!f) return;
+    if (!/\.xlsx$/i.test(f.name)) {
+      toast.error('Choose an Excel .xlsx file');
+      return;
+    }
+    setFile(f);
+    setResult(null);
+  };
+
+  const submit = async () => {
+    if (!file) return;
+    setImporting(true);
+    setResult(null);
+    try {
+      const { data } = await itemApi.import(file);
+      setResult({ summary: data });
+      toast.success(`Imported ${data.itemsCreated + data.itemsUpdated} item(s)`);
+      await onDone();
+    } catch (err) {
+      const data = err?.response?.data;
+      if (data?.errors) setResult({ message: data.message, errors: data.errors });
+      else toast.error(errMsg(err));
+    } finally {
+      setImporting(false);
+    }
+  };
+
+  const summary = result?.summary;
+  const step = (n) => (
+    <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-brand-50 text-xs font-bold text-brand-600">{n}</span>
+  );
+
+  return (
+    <Modal open onClose={onClose} title="Import menu from Excel" wide>
+      <div className="space-y-5">
+        <ol className="space-y-2 text-sm text-gray-600">
+          <li className="flex gap-3">
+            {step(1)}
+            <span>Download the template and fill one row per item. Write a category once and the rows below it belong to it.</span>
+          </li>
+          <li className="flex gap-3">
+            {step(2)}
+            <span>
+              Put each photo in the <b>Image</b> cell (Excel: Insert &gt; Pictures &gt; Place in Cell) or paste a web link to it.
+            </span>
+          </li>
+          <li className="flex gap-3">
+            {step(3)}
+            <span>Upload the file. New categories are created automatically; items with the same name are updated, not duplicated.</span>
+          </li>
+        </ol>
+
+        <Button variant="secondary" size="sm" onClick={downloadTemplate} loading={downloading}>
+          <Download size={14} /> Download template (.xlsx)
+        </Button>
+
+        <input
+          ref={fileRef}
+          type="file"
+          accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+          className="hidden"
+          onChange={(e) => pick(e.target.files?.[0])}
+        />
+        <button
+          type="button"
+          onClick={() => fileRef.current?.click()}
+          onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
+          onDragLeave={() => setDragging(false)}
+          onDrop={(e) => { e.preventDefault(); setDragging(false); pick(e.dataTransfer.files?.[0]); }}
+          className={`flex w-full flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed px-4 py-8 text-center transition-colors ${
+            dragging ? 'border-brand-400 bg-brand-50' : 'border-gray-200 hover:border-brand-300'
+          }`}
+        >
+          {file ? (
+            <>
+              <FileSpreadsheet size={26} className="text-emerald-500" />
+              <span className="text-sm font-semibold text-gray-800">{file.name}</span>
+              <span className="text-xs text-gray-400">{(file.size / 1024 / 1024).toFixed(2)} MB. Click to choose a different file</span>
+            </>
+          ) : (
+            <>
+              <FileUp size={26} className="text-gray-400" />
+              <span className="text-sm font-medium text-gray-600">Drop your filled Excel file here, or click to browse</span>
+              <span className="text-xs text-gray-300">.xlsx up to 40MB including photos</span>
+            </>
+          )}
+        </button>
+
+        {result?.errors && (
+          <div className="rounded-2xl bg-red-50 p-4 ring-1 ring-red-100">
+            <div className="flex items-center gap-2 text-sm font-bold text-red-700">
+              <AlertTriangle size={16} /> {result.message}
+            </div>
+            <ul className="mt-2 max-h-48 space-y-1 overflow-y-auto text-xs text-red-700">
+              {result.errors.map((e, i) => (
+                <li key={i}>
+                  <span className="font-semibold">{e.row ? `Row ${e.row}: ` : ''}</span>
+                  {e.message}
+                </li>
+              ))}
+            </ul>
+            <div className="mt-2 text-xs text-red-500">Nothing was imported. Fix these rows in Excel and upload again.</div>
+          </div>
+        )}
+
+        {summary && (
+          <div className="rounded-2xl bg-emerald-50 p-4 ring-1 ring-emerald-100">
+            <div className="flex items-center gap-2 text-sm font-bold text-emerald-800">
+              <CheckCircle2 size={16} /> Import complete
+            </div>
+            <div className="mt-2 grid grid-cols-2 gap-2 text-xs text-emerald-900 sm:grid-cols-4">
+              <div className="rounded-xl bg-white/70 px-3 py-2"><div className="text-lg font-extrabold">{summary.itemsCreated}</div>items added</div>
+              <div className="rounded-xl bg-white/70 px-3 py-2"><div className="text-lg font-extrabold">{summary.itemsUpdated}</div>items updated</div>
+              <div className="rounded-xl bg-white/70 px-3 py-2"><div className="text-lg font-extrabold">{summary.categoriesCreated}</div>categories added</div>
+              <div className="rounded-xl bg-white/70 px-3 py-2"><div className="text-lg font-extrabold">{summary.imagesUploaded}</div>photos uploaded</div>
+            </div>
+            {summary.warnings?.length > 0 && (
+              <ul className="mt-3 max-h-40 space-y-1 overflow-y-auto text-xs text-amber-800">
+                {summary.warnings.map((w, i) => (
+                  <li key={i}><span className="font-semibold">Row {w.row}: </span>{w.message}</li>
+                ))}
+              </ul>
+            )}
+          </div>
+        )}
+
+        <div className="flex justify-end gap-2 pt-1">
+          <Button type="button" variant="secondary" onClick={onClose}>{summary ? 'Done' : 'Cancel'}</Button>
+          {!summary && (
+            <Button type="button" onClick={submit} loading={importing} disabled={!file}>
+              <Upload size={16} /> {importing ? 'Importing, this can take a minute with photos' : 'Import menu'}
+            </Button>
+          )}
+        </div>
+      </div>
     </Modal>
   );
 }

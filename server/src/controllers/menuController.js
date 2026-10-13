@@ -3,6 +3,7 @@ import MenuItem from '../models/MenuItem.js';
 import BranchItem from '../models/BranchItem.js';
 import { HttpError } from '../middleware/error.js';
 import { processImage, deleteImage } from '../middleware/upload.js';
+import { parseWorkbook, runImport, buildTemplate } from '../services/menuImport.js';
 
 // ---------- Categories ----------
 
@@ -138,4 +139,32 @@ export async function deleteItem(req, res) {
   await BranchItem.deleteMany({ itemId: item._id });
   await item.deleteOne();
   res.json({ ok: true });
+}
+
+// ---------- Bulk import from Excel ----------
+
+export async function importTemplate(req, res) {
+  const buffer = await buildTemplate();
+  res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+  res.setHeader('Content-Disposition', 'attachment; filename="menu-import-template.xlsx"');
+  res.send(buffer);
+}
+
+export async function importItems(req, res) {
+  if (!req.file) throw new HttpError(400, 'Choose an Excel (.xlsx) file to import');
+  const parsed = await parseWorkbook(req.file.buffer);
+  if (parsed.errors.length) {
+    return res.status(400).json({
+      message: `${parsed.errors.length} row(s) need fixing before anything is imported`,
+      errors: parsed.errors,
+    });
+  }
+  const result = await runImport(req.user.restaurantId, parsed.rows);
+  if (result.errors) {
+    return res.status(400).json({
+      message: `${result.errors.length} row(s) need fixing before anything is imported`,
+      errors: result.errors,
+    });
+  }
+  res.json(result.summary);
 }

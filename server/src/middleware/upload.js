@@ -10,12 +10,33 @@ cloudinary.config({
 
 const storage = multer.memoryStorage();
 
+// Rejections from a multer fileFilter are plain Errors; give them a 400 so the
+// error handler returns the message instead of a generic 500.
+function badRequest(message) {
+  const err = new Error(message);
+  err.status = 400;
+  return err;
+}
+
 export const upload = multer({
   storage,
   limits: { fileSize: 8 * 1024 * 1024 },
   fileFilter: (req, file, cb) => {
     if (/^image\/(jpeg|png|webp|gif|avif)$/.test(file.mimetype)) cb(null, true);
-    else cb(new Error('Only image files are allowed'));
+    else cb(badRequest('Only image files are allowed'));
+  },
+});
+
+// Excel workbook upload for the bulk menu import (pictures travel inside the file)
+const XLSX_MIME = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+export const uploadSpreadsheet = multer({
+  storage,
+  limits: { fileSize: 40 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => {
+    const isXlsx = file.mimetype === XLSX_MIME || /\.xlsx$/i.test(file.originalname || '');
+    if (isXlsx) cb(null, true);
+    else if (/\.xls$/i.test(file.originalname || '')) cb(badRequest('Old .xls format is not supported. Save the file as .xlsx (Excel Workbook)'));
+    else cb(badRequest('Only Excel .xlsx files are accepted'));
   },
 });
 

@@ -52,6 +52,13 @@ export const itemApi = {
   create: (formData) => api.post('/items', formData),
   update: (id, formData) => api.patch(`/items/${id}`, formData),
   remove: (id) => api.delete(`/items/${id}`),
+  // Bulk import: one .xlsx with categories, items and pictures inside
+  import: (file) => {
+    const fd = new FormData();
+    fd.append('file', file);
+    return api.post('/items/import', fd, { timeout: 10 * 60 * 1000 });
+  },
+  downloadTemplate: () => downloadFile('/items/import-template', {}, 'menu-import-template.xlsx'),
 };
 
 // Public

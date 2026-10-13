@@ -2,7 +2,7 @@ import { Router } from 'express';
 import rateLimit from 'express-rate-limit';
 import { requireAuth, requireRestaurant } from '../middleware/auth.js';
 import { asyncHandler as ah } from '../utils/asyncHandler.js';
-import { upload } from '../middleware/upload.js';
+import { upload, uploadSpreadsheet } from '../middleware/upload.js';
 import * as auth from '../controllers/authController.js';
 import * as restaurant from '../controllers/restaurantController.js';
 import * as branches from '../controllers/branchController.js';
@@ -50,6 +50,8 @@ router.patch('/categories/:id', requireAuth, requireRestaurant, ah(menu.updateCa
 router.delete('/categories/:id', requireAuth, requireRestaurant, ah(menu.deleteCategory));
 
 router.get('/items', requireAuth, requireRestaurant, ah(menu.listItems));
+router.get('/items/import-template', requireAuth, requireRestaurant, ah(menu.importTemplate));
+router.post('/items/import', requireAuth, requireRestaurant, uploadSpreadsheet.single('file'), ah(menu.importItems));
 router.post('/items', requireAuth, requireRestaurant, upload.single('image'), ah(menu.createItem));
 router.patch('/items/:id', requireAuth, requireRestaurant, upload.single('image'), ah(menu.updateItem));
 router.delete('/items/:id', requireAuth, requireRestaurant, ah(menu.deleteItem));
