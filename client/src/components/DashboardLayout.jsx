@@ -32,7 +32,7 @@ function NavItems({ onNavigate, indicatorId }) {
       {NAV.map((group, gi) => (
         <div key={gi} className={gi ? 'mt-5' : ''}>
           {group.title && (
-            <div className="px-3 pb-1.5 text-[11px] font-semibold uppercase tracking-wider text-gray-500">{group.title}</div>
+            <div className="px-3 pb-1.5 text-[11px] font-semibold uppercase tracking-[0.12em] text-brand-200/55">{group.title}</div>
           )}
           <ul className="space-y-0.5">
             {group.items.map(({ to, label, icon: Icon, end }) => (
@@ -44,7 +44,7 @@ function NavItems({ onNavigate, indicatorId }) {
                   className={({ isActive }) =>
                     cx(
                       'relative flex h-10 items-center gap-3 rounded-lg px-3 text-sm font-medium transition-colors duration-150',
-                      isActive ? 'text-brand-800' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+                      isActive ? 'font-semibold text-brand-950' : 'text-white/70 hover:bg-white/[0.06] hover:text-white'
                     )
                   }
                 >
@@ -54,11 +54,11 @@ function NavItems({ onNavigate, indicatorId }) {
                         <motion.span
                           layoutId={indicatorId}
                           aria-hidden="true"
-                          className="absolute inset-0 rounded-lg bg-brand-50 ring-1 ring-inset ring-brand-100"
+                          className="absolute inset-0 rounded-lg bg-brand-300 shadow-[0_6px_18px_-8px_rgba(190,223,166,0.55)]"
                           transition={{ type: 'spring', stiffness: 500, damping: 40 }}
                         />
                       )}
-                      <Icon size={18} aria-hidden="true" className={cx('relative', isActive ? 'text-brand-700' : 'text-gray-400')} />
+                      <Icon size={18} aria-hidden="true" className={cx('relative', isActive ? 'text-brand-900' : 'text-white/45')} />
                       <span className="relative">{label}</span>
                     </>
                   )}
@@ -76,20 +76,20 @@ function AccountFooter({ onSignOut }) {
   const { user, restaurant } = useAuth();
   const name = restaurant?.nameEn || user?.businessName || 'Your brand';
   return (
-    <div className="border-t border-gray-200 p-3">
-      <div className="flex items-center gap-3 rounded-lg px-2 py-2">
+    <div className="border-t border-white/10 p-3">
+      <div className="flex items-center gap-3 rounded-xl bg-white/[0.04] px-2.5 py-2.5 ring-1 ring-inset ring-white/[0.06]">
         {restaurant?.logoUrl ? (
-          <img src={restaurant.logoUrl} alt="" className="h-9 w-9 shrink-0 rounded-lg bg-white object-contain ring-1 ring-gray-200" />
+          <img src={restaurant.logoUrl} alt="" className="h-9 w-9 shrink-0 rounded-lg bg-white object-contain p-0.5" />
         ) : (
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-sm font-semibold text-brand-700" aria-hidden="true">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-brand-300 text-sm font-semibold text-brand-950" aria-hidden="true">
             {name[0]?.toUpperCase()}
           </div>
         )}
         <div className="min-w-0 flex-1">
-          <div className="truncate text-sm font-semibold text-gray-900">{name}</div>
-          <div className="truncate text-xs text-gray-500">{user?.email}</div>
+          <div className="truncate text-sm font-semibold text-white">{name}</div>
+          <div className="truncate text-xs text-white/55">{user?.email}</div>
         </div>
-        <IconButton label="Sign out" onClick={onSignOut} variant="danger" size="sm">
+        <IconButton label="Sign out" onClick={onSignOut} size="sm" className="!text-white/60 hover:!bg-white/10 hover:!text-white">
           <LogOut size={16} />
         </IconButton>
       </div>
@@ -100,10 +100,12 @@ function AccountFooter({ onSignOut }) {
 function Brand() {
   return (
     <div className="flex items-center gap-3 px-5 pb-5 pt-5">
-      <LogoMark size={40} />
+      <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-white shadow-[0_4px_14px_-4px_rgba(0,0,0,0.4)]">
+        <LogoMark size={34} />
+      </span>
       <div className="leading-tight">
-        <div className="text-[15px] font-bold tracking-tight text-gray-900">DINEZA</div>
-        <div className="text-[11px] font-medium text-gray-500">Brand manager</div>
+        <div className="text-[15px] font-bold tracking-[0.08em] text-white">DINEZA</div>
+        <div className="text-[11px] font-medium text-brand-200/70">Brand manager</div>
       </div>
     </div>
   );
@@ -154,7 +156,7 @@ export default function DashboardLayout() {
       </a>
 
       {/* Desktop sidebar */}
-      <aside className="fixed inset-y-0 left-0 z-30 hidden w-[248px] flex-col border-r border-gray-200 bg-white lg:flex">
+      <aside className="fixed inset-y-0 left-0 z-30 hidden w-[248px] flex-col bg-brand-950 lg:flex">
         <Brand />
         <NavItems indicatorId="nav-indicator-desktop" />
         <AccountFooter onSignOut={handleLogout} />
@@ -194,7 +196,7 @@ export default function DashboardLayout() {
               id="mobile-nav"
               ref={drawerRef}
               aria-label="Navigation"
-              className="absolute inset-y-0 left-0 flex w-[280px] max-w-[85vw] flex-col bg-white shadow-pop"
+              className="absolute inset-y-0 left-0 flex w-[280px] max-w-[85vw] flex-col bg-brand-950 shadow-pop"
               initial={{ x: '-100%' }}
               animate={{ x: 0 }}
               exit={{ x: '-100%' }}
@@ -202,7 +204,7 @@ export default function DashboardLayout() {
             >
               <div className="flex items-center justify-between pe-3">
                 <Brand />
-                <IconButton label="Close menu" onClick={() => setMobileOpen(false)}>
+                <IconButton label="Close menu" onClick={() => setMobileOpen(false)} className="!text-white/70 hover:!bg-white/10 hover:!text-white">
                   <X size={18} />
                 </IconButton>
               </div>

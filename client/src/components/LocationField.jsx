@@ -68,8 +68,8 @@ export default function LocationField({ value, onChange }) {
           <div className={`flex items-center justify-between px-3.5 py-2.5 ${hasCoords ? 'border-t border-gray-100' : ''}`}>
             <span className="flex items-center gap-2.5 text-sm font-semibold text-gray-700">
               <span className="relative flex h-2.5 w-2.5">
-                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-60" />
-                <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-500" />
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-brand-400 opacity-60" />
+                <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-brand-600" />
               </span>
               {hasCoords ? 'Location set' : 'Maps link added'}
             </span>

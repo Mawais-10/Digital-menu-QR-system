@@ -128,7 +128,7 @@
   "constraints": {
     "must": [
       "Dashboard only: the customer QR menu (/menu/:slug) keeps its own dark design and must not import ui.jsx or motion",
-      "Primary actions use brand-700 (white text keeps WCAG AA); brand-500/600 for accents and focus",
+      "System palette is pistachio (brand-300) on evergreen (brand-950): primary actions are brand-300 with brand-950 text; sidebar is brand-950; green text/links use brand-700; status colors stay in the brand green family",
       "Every menu photo renders through ImageFrame (object-contain by default, fixed aspect ratio)",
       "Icon-only buttons use IconButton with a label; switches use Toggle with a label",
       "Visible :focus-visible outline on all controls (.dash / .dash-portal scopes)"
@@ -146,6 +146,11 @@
       "date": "2026-10-13",
       "decision": "Dashboard redesign: neutral light surfaces, gray-200 borders, 14px body / 13px labels, grouped sidebar with animated active pill, enter-only page transitions. Segmented control pattern adapted from 21st.dev \"Segmented Control\" (ddoemonn) into JSX with motion/react.",
       "source": "21st search + get 23552"
+    },
+    {
+      "date": "2026-10-13",
+      "decision": "Replaced the orange system color with a premium pistachio light green + deep evergreen palette (evergreen sidebar, pistachio active pill and primary buttons, sage-tinted page background). Customer menus keep each restaurant theme.",
+      "source": "user request; ui-ux-pro-max premium palette guidance (dark anchor + single refined accent + warm off-white)"
     }
   ],
   "evidence": [

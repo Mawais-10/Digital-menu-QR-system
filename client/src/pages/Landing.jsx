@@ -74,7 +74,7 @@ export default function Landing() {
                   <span>{card.en}</span>
                   <span className="font-arabic text-[10px]">{card.ar}</span>
                 </div>
-                <div className="pattern-arabesque relative flex aspect-[4/3] items-center justify-center bg-orange-50/60 text-5xl">
+                <div className="pattern-arabesque relative flex aspect-[4/3] items-center justify-center bg-brand-50/60 text-5xl">
                   {card.emoji}
                   {card.badge && (
                     <span className="absolute start-0 top-2 rounded-e-full bg-red-500 py-0.5 pe-2 ps-1.5 text-[8px] font-extrabold text-white">
@@ -129,18 +129,18 @@ export default function Landing() {
 
       {/* CTA */}
       <section className="px-5 pb-20">
-        <div className="pattern-arabesque mx-auto max-w-5xl overflow-hidden rounded-3xl bg-gradient-to-br from-brand-500 to-orange-600 px-6 py-14 text-center shadow-lift">
+        <div className="pattern-arabesque mx-auto max-w-5xl overflow-hidden rounded-3xl bg-gradient-to-br from-brand-500 to-brand-800 px-6 py-14 text-center shadow-lift">
           <h2 className="text-3xl font-extrabold text-white">Ready to ditch paper menus?</h2>
-          <p className="mx-auto mt-3 max-w-md text-sm leading-relaxed text-orange-100">
+          <p className="mx-auto mt-3 max-w-md text-sm leading-relaxed text-brand-100">
             Join restaurants across Oman serving beautiful digital menus with a single permanent QR code.
           </p>
           <div className="mt-7 flex flex-col items-center gap-3">
             <Link to="/signup">
-              <Button variant="dark" size="lg" className="!bg-white !text-brand-600 hover:!bg-orange-50">
+              <Button variant="dark" size="lg" className="!bg-white !text-brand-600 hover:!bg-brand-50">
                 Get started free <ArrowRight size={17} />
               </Button>
             </Link>
-            <div className="flex items-center gap-4 text-xs font-medium text-orange-100">
+            <div className="flex items-center gap-4 text-xs font-medium text-brand-100">
               <span className="flex items-center gap-1"><Check size={13} /> Bilingual AR/EN</span>
               <span className="flex items-center gap-1"><Check size={13} /> Multi-branch</span>
               <span className="flex items-center gap-1"><Check size={13} /> Permanent QR</span>

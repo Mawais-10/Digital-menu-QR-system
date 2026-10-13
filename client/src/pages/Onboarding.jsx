@@ -93,12 +93,12 @@ export default function Onboarding() {
               <div
                 aria-current={step === s ? 'step' : undefined}
                 className={`flex h-8 w-8 items-center justify-center rounded-full text-xs font-semibold transition-colors ${
-                  step > s ? 'bg-emerald-600 text-white' : step === s ? 'bg-brand-700 text-white' : 'bg-gray-200 text-gray-600'
+                  step > s ? 'bg-brand-700 text-white' : step === s ? 'bg-brand-300 text-brand-950 ring-1 ring-inset ring-brand-950/10' : 'bg-gray-200 text-gray-600'
                 }`}
               >
                 {step > s ? <Check size={15} /> : s}
               </div>
-              {s < 3 && <div className={`h-0.5 w-10 rounded ${step > s ? 'bg-emerald-600' : 'bg-gray-200'}`} aria-hidden="true" />}
+              {s < 3 && <div className={`h-0.5 w-10 rounded ${step > s ? 'bg-brand-600' : 'bg-gray-200'}`} aria-hidden="true" />}
             </div>
           ))}
         </div>
@@ -164,7 +164,7 @@ export default function Onboarding() {
                       aria-pressed={profile.defaultLanguage === v}
                       onClick={() => setProfile({ ...profile, defaultLanguage: v })}
                       className={`h-10 cursor-pointer rounded-lg border px-4 text-sm font-semibold transition-colors ${v === 'ar' ? 'font-arabic' : ''} ${
-                        profile.defaultLanguage === v ? 'border-brand-700 bg-brand-700 text-white' : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
+                        profile.defaultLanguage === v ? 'border-brand-400 bg-brand-300 text-brand-950' : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
                       }`}
                     >
                       {label}
@@ -201,7 +201,7 @@ export default function Onboarding() {
 
           {step === 3 && createdBranch && (
             <div className="text-center">
-              <div className="mx-auto mb-4 w-fit rounded-xl bg-emerald-50 p-3 text-emerald-700" aria-hidden="true"><PartyPopper size={24} /></div>
+              <div className="mx-auto mb-4 w-fit rounded-xl bg-brand-100 p-3 text-brand-800" aria-hidden="true"><PartyPopper size={24} /></div>
               <h1 className="text-xl font-semibold text-gray-900">Your menu is live</h1>
               <p className="mt-1.5 text-sm text-gray-500">
                 This QR code is permanent — print it once, update your menu anytime.

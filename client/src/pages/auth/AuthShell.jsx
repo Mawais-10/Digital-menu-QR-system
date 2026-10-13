@@ -7,7 +7,7 @@ export default function AuthShell({ title, subtitle, children, footer }) {
   return (
     <div className="flex min-h-screen bg-white">
       {/* Brand panel */}
-      <div className="relative hidden w-[46%] overflow-hidden bg-gradient-to-br from-brand-500 via-brand-600 to-orange-700 lg:block">
+      <div className="relative hidden w-[46%] overflow-hidden bg-gradient-to-br from-brand-500 via-brand-600 to-brand-950 lg:block">
         <div className="pattern-arabesque absolute inset-0 opacity-40" />
         <div className="relative flex h-full flex-col justify-between p-12">
           <Link to="/" className="flex items-center gap-2.5">
@@ -23,7 +23,7 @@ export default function AuthShell({ title, subtitle, children, footer }) {
               <br />
               Works forever.
             </h2>
-            <p className="mt-4 max-w-sm text-[15px] leading-relaxed text-orange-100">
+            <p className="mt-4 max-w-sm text-[15px] leading-relaxed text-brand-100">
               Build your restaurant's digital menu, update it anytime, and your printed QR codes never change.
             </p>
             <div className="mt-8 space-y-3.5">
@@ -40,7 +40,7 @@ export default function AuthShell({ title, subtitle, children, footer }) {
             </div>
           </div>
 
-          <p className="text-xs text-orange-200/70">© {new Date().getFullYear()} DINEZA — Digital menus for the GCC</p>
+          <p className="text-xs text-brand-200/70">© {new Date().getFullYear()} DINEZA — Digital menus for the GCC</p>
         </div>
       </div>
 

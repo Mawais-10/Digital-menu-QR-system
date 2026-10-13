@@ -48,7 +48,7 @@ export function AvailabilitySummary({ rows }) {
     return c;
   }, [rows]);
   const tiles = [
-    { label: 'Available', value: counts.available, icon: CircleCheck, tone: 'text-emerald-700 bg-emerald-50' },
+    { label: 'Available', value: counts.available, icon: CircleCheck, tone: 'text-brand-800 bg-brand-100' },
     { label: 'Sold out', value: counts.soldout, icon: PackageX, tone: 'text-red-700 bg-red-50' },
     { label: 'Off menu', value: counts.hidden, icon: EyeOff, tone: 'text-gray-700 bg-gray-100' },
   ];

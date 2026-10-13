@@ -235,7 +235,7 @@ export default function BranchManagers({ branch }) {
         <ul className="space-y-2">
           {CAN.map((t) => (
             <li key={t} className="flex gap-2 text-[13px] text-gray-700">
-              <Check size={15} className="mt-0.5 shrink-0 text-emerald-600" aria-hidden="true" /> {t}
+              <Check size={15} className="mt-0.5 shrink-0 text-brand-600" aria-hidden="true" /> {t}
             </li>
           ))}
         </ul>

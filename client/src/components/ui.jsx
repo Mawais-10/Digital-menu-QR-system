@@ -8,8 +8,9 @@ import { X, Loader2, AlertTriangle, RefreshCw, ImageIcon, ArrowLeft, ChevronDown
    DINEZA dashboard design system
    - One scale for every screen: 8px radius on controls, 12px on surfaces,
      40px control height (32px small), 14px body text, 13px labels, 12px captions.
-   - Brand orange for identity and accents; primary actions use brand-700 so
-     white text keeps WCAG AA contrast.
+   - Pistachio light green (brand-300) is the signature: primary actions and the
+     active navigation item, always with evergreen (brand-950) text for contrast.
+     Deep evergreen anchors the sidebar; status colors share the same green family.
    - Motion is short and purposeful, and follows the OS reduced-motion setting
      (MotionConfig reducedMotion="user" in main.jsx).
    ========================================================================== */
@@ -21,7 +22,7 @@ export const cx = (...parts) => parts.filter(Boolean).join(' ');
 /* ---------- Buttons ---------- */
 
 const BTN_VARIANTS = {
-  primary: 'bg-brand-700 text-white shadow-card hover:bg-brand-800',
+  primary: 'bg-brand-300 text-brand-950 shadow-card ring-1 ring-inset ring-brand-950/10 hover:bg-brand-400',
   secondary: 'border border-gray-300 bg-white text-gray-800 shadow-card hover:border-gray-400 hover:bg-gray-50',
   ghost: 'text-gray-700 hover:bg-gray-100 hover:text-gray-900',
   danger: 'bg-red-600 text-white shadow-card hover:bg-red-700',
@@ -177,7 +178,7 @@ export function Select({ label, hint, error, children, className = '', id, ...pr
 
 /* ---------- Switches ---------- */
 
-const TOGGLE_TONES = { brand: 'bg-brand-600', success: 'bg-emerald-600', danger: 'bg-red-600', dark: 'bg-gray-900' };
+const TOGGLE_TONES = { brand: 'bg-brand-600', success: 'bg-brand-600', danger: 'bg-red-600', dark: 'bg-brand-950' };
 
 // Accessible on/off switch. Always pass `label` when there is no visible text next to it.
 export function Toggle({ checked, onChange, disabled, label, size = 'md', tone = 'brand', busy, className = '', ...props }) {
@@ -216,12 +217,12 @@ export function Toggle({ checked, onChange, disabled, label, size = 'md', tone =
  * roving tabindex, arrow/Home/End keys, reduced motion via MotionConfig.
  * options: [{ value, label, icon?, tone?: 'neutral' | 'success' | 'danger' }]
  */
-const SEG_ACTIVE_TEXT = { neutral: 'text-gray-900', success: 'text-emerald-700', danger: 'text-white', brand: 'text-white' };
+const SEG_ACTIVE_TEXT = { neutral: 'text-gray-900', success: 'text-brand-800', danger: 'text-white', brand: 'text-brand-950' };
 const SEG_THUMB = {
   neutral: 'bg-white shadow-sm ring-1 ring-gray-900/5',
-  success: 'bg-white shadow-sm ring-1 ring-emerald-600/20',
+  success: 'bg-white shadow-sm ring-1 ring-brand-600/30',
   danger: 'bg-red-600 shadow-sm',
-  brand: 'bg-brand-700 shadow-sm',
+  brand: 'bg-brand-300 shadow-sm',
 };
 
 export function SegmentedControl({ options, value, onChange, label, size = 'md', disabled, busy, className = '', fullWidth }) {
@@ -379,14 +380,14 @@ export function Tabs({ tabs, value, onChange, label, idBase, className = '' }) {
 /* ---------- Display ---------- */
 
 const BADGE_COLORS = {
-  orange: 'bg-brand-50 text-brand-800 ring-brand-200',
-  green: 'bg-emerald-50 text-emerald-800 ring-emerald-200',
+  orange: 'bg-amber-50 text-amber-800 ring-amber-200',
+  green: 'bg-brand-50 text-brand-800 ring-brand-200',
   gray: 'bg-gray-100 text-gray-700 ring-gray-200',
   red: 'bg-red-50 text-red-700 ring-red-200',
   amber: 'bg-amber-50 text-amber-800 ring-amber-200',
   blue: 'bg-sky-50 text-sky-800 ring-sky-200',
 };
-const DOT_COLORS = { orange: 'bg-brand-500', green: 'bg-emerald-500', gray: 'bg-gray-400', red: 'bg-red-500', amber: 'bg-amber-500', blue: 'bg-sky-500' };
+const DOT_COLORS = { orange: 'bg-amber-500', green: 'bg-brand-600', gray: 'bg-gray-400', red: 'bg-red-500', amber: 'bg-amber-500', blue: 'bg-sky-500' };
 
 export function Badge({ children, color = 'orange', dot, className = '' }) {
   return (
@@ -419,9 +420,9 @@ export function CardHeader({ title, description, action, className = '' }) {
 
 export function StatCard({ label, value, icon: Icon, to, hint, tone = 'brand' }) {
   const tones = {
-    brand: 'bg-brand-50 text-brand-700',
+    brand: 'bg-brand-100 text-brand-800',
     red: 'bg-red-50 text-red-700',
-    green: 'bg-emerald-50 text-emerald-700',
+    green: 'bg-brand-50 text-brand-700',
     gray: 'bg-gray-100 text-gray-700',
   };
   const body = (
@@ -629,7 +630,7 @@ export function ConfirmDialog({ open, onClose, onConfirm, title, message, confir
 export function Spinner({ className = '', label = 'Loading' }) {
   return (
     <div className={cx('flex items-center justify-center py-16', className)} role="status" aria-label={label}>
-      <Loader2 size={26} className="animate-spin text-brand-600" aria-hidden="true" />
+      <Loader2 size={26} className="animate-spin text-brand-700" aria-hidden="true" />
     </div>
   );
 }
@@ -661,7 +662,7 @@ export function EmptyState({ icon: Icon, title, subtitle, action, className = ''
   return (
     <div className={cx('flex flex-col items-center justify-center rounded-xl border border-dashed border-gray-300 bg-white px-6 py-12 text-center', className)}>
       {Icon && (
-        <div className="mb-4 rounded-xl bg-brand-50 p-3 text-brand-700" aria-hidden="true">
+        <div className="mb-4 rounded-xl bg-brand-100 p-3 text-brand-800" aria-hidden="true">
           <Icon size={22} />
         </div>
       )}

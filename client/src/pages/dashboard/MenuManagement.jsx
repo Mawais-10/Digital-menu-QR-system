@@ -26,7 +26,7 @@ const LAYOUT_OPTIONS = [
 // Tiny schematic preview of each public-menu card template
 function LayoutPreview({ type }) {
   const banner = <div className="h-1.5 rounded-sm bg-brand-400" />;
-  const photo = <div className="mt-0.5 flex-1 rounded-sm bg-orange-100/70" />;
+  const photo = <div className="mt-0.5 flex-1 rounded-sm bg-gray-200/80" />;
   const cell = (content, key) => (
     <div key={key} className="flex flex-1 flex-col rounded-md bg-gray-100 p-0.5">{content}</div>
   );
@@ -36,8 +36,8 @@ function LayoutPreview({ type }) {
       {type === 'large' && cell(
         <>
           {banner}
-          <div className="relative mt-0.5 flex-1 rounded-sm bg-orange-100/70">
-            <span className="absolute right-0.5 top-1/2 h-3 w-3 -translate-y-1/2 rounded-full bg-amber-400" />
+          <div className="relative mt-0.5 flex-1 rounded-sm bg-gray-200/80">
+            <span className="absolute right-0.5 top-1/2 h-3 w-3 -translate-y-1/2 rounded-full bg-brand-500" />
           </div>
         </>
       )}
@@ -46,18 +46,18 @@ function LayoutPreview({ type }) {
         <div className="flex flex-col gap-0.5">
           {[0, 1].map((i) => (
             <div key={i} className="flex flex-1 items-center gap-0.5 rounded-sm bg-white p-0.5">
-              <span className="h-full w-3 rounded-sm bg-orange-100" />
+              <span className="h-full w-3 rounded-sm bg-gray-200" />
               <span className="h-1 flex-1 rounded-sm bg-gray-200" />
-              <span className="h-2 w-2.5 rounded-sm bg-amber-400" />
+              <span className="h-2 w-2.5 rounded-sm bg-brand-500" />
             </div>
           ))}
         </div>
       )}
       {type === 'hero' && cell(
-        <div className="relative flex-1 overflow-hidden rounded-sm bg-orange-200/80">
+        <div className="relative flex-1 overflow-hidden rounded-sm bg-gray-300/80">
           <span className="absolute inset-x-0 bottom-0 h-2.5 bg-gradient-to-t from-gray-700/80 to-transparent" />
           <span className="absolute bottom-0.5 left-0.5 h-1 w-5 rounded-sm bg-white/90" />
-          <span className="absolute bottom-0.5 right-0.5 h-1.5 w-2.5 rounded-sm bg-amber-400" />
+          <span className="absolute bottom-0.5 right-0.5 h-1.5 w-2.5 rounded-sm bg-brand-500" />
         </div>
       )}
       {type === 'minimal' && [0, 1].map((i) =>
@@ -262,7 +262,7 @@ export default function MenuManagement() {
                     aria-pressed={active}
                     className={cx(
                       'inline-flex h-9 cursor-pointer items-center gap-2 rounded-full border px-3.5 text-[13px] font-semibold transition-colors duration-150',
-                      active ? 'border-gray-900 bg-gray-900 text-white' : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300 hover:bg-gray-50'
+                      active ? 'border-brand-950 bg-brand-950 text-white' : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300 hover:bg-gray-50'
                     )}
                   >
                     {c.nameEn}
@@ -735,7 +735,7 @@ function ImportDialog({ onClose, onDone }) {
         >
           {file ? (
             <>
-              <FileSpreadsheet size={26} className="text-emerald-600" aria-hidden="true" />
+              <FileSpreadsheet size={26} className="text-brand-600" aria-hidden="true" />
               <span className="text-sm font-semibold text-gray-900">{file.name}</span>
               <span className="text-xs text-gray-500">{(file.size / 1024 / 1024).toFixed(2)} MB · click to choose a different file</span>
             </>
@@ -766,11 +766,11 @@ function ImportDialog({ onClose, onDone }) {
         )}
 
         {summary && (
-          <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4" role="status">
-            <div className="flex items-center gap-2 text-sm font-semibold text-emerald-900">
+          <div className="rounded-xl border border-brand-200 bg-brand-50 p-4" role="status">
+            <div className="flex items-center gap-2 text-sm font-semibold text-brand-900">
               <CheckCircle2 size={16} aria-hidden="true" /> Import complete
             </div>
-            <div className="mt-3 grid grid-cols-2 gap-2 text-xs text-emerald-900 sm:grid-cols-4">
+            <div className="mt-3 grid grid-cols-2 gap-2 text-xs text-brand-900 sm:grid-cols-4">
               {[
                 [summary.itemsCreated, 'items added'],
                 [summary.itemsUpdated, 'items updated'],

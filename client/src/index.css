@@ -4,16 +4,19 @@
   --font-sans: "Poppins", ui-sans-serif, system-ui, -apple-system, sans-serif;
   --font-arabic: "Cairo", "Poppins", sans-serif;
 
-  --color-brand-50: #fff7ed;
-  --color-brand-100: #ffedd5;
-  --color-brand-200: #fed7aa;
-  --color-brand-300: #fdba74;
-  --color-brand-400: #fb923c;
-  --color-brand-500: #f97316;
-  --color-brand-600: #ea580c;
-  --color-brand-700: #c2410c;
-
-  --color-brand-800: #9a3412;
+  /* DINEZA system palette: pistachio light green (signature) to deep evergreen (anchor).
+     Customer menus are unaffected; each restaurant keeps its own theme color. */
+  --color-brand-50: #f4f9f0;
+  --color-brand-100: #e7f3de;
+  --color-brand-200: #d4eac4;
+  --color-brand-300: #bedfa6; /* signature pistachio: primary buttons, active navigation */
+  --color-brand-400: #a3cf86;
+  --color-brand-500: #7db462;
+  --color-brand-600: #55913f; /* icons, focus rings, indicators (3.8:1 on white) */
+  --color-brand-700: #2f6b3c; /* links and green text (6.4:1 on white) */
+  --color-brand-800: #234d33;
+  --color-brand-900: #173826;
+  --color-brand-950: #0e271b; /* evergreen: sidebar, text on pistachio (10.8:1) */
 
   --shadow-soft: 0 2px 12px rgb(0 0 0 / 0.06);
   --shadow-lift: 0 8px 30px rgb(0 0 0 / 0.12);
@@ -133,7 +136,7 @@ body {
    ============================================================ */
 
 .dash {
-  background-color: #f6f6f7;
+  background-color: #f5f7f3;
   color: #111827;
 }
 
@@ -143,6 +146,10 @@ body {
 .dash-portal :focus-visible {
   outline: 2px solid var(--color-brand-600);
   outline-offset: 2px;
+}
+/* On the evergreen sidebar the focus ring switches to pistachio so it stays visible */
+.dash aside :focus-visible {
+  outline-color: var(--color-brand-300);
 }
 .dash input:focus-visible,
 .dash textarea:focus-visible,
