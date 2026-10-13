@@ -1,119 +1,234 @@
-import { useState } from 'react';
-import { NavLink, Outlet, useNavigate } from 'react-router-dom';
+import { Suspense, useEffect, useRef, useState } from 'react';
+import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { motion, AnimatePresence, MotionConfig } from 'motion/react';
 import {
-  LayoutDashboard, UtensilsCrossed, Store, QrCode, Palette, Settings, LogOut, Menu as MenuIcon, X, ExternalLink,
+  LayoutDashboard, UtensilsCrossed, Store, QrCode, Palette, Settings, LogOut, Menu as MenuIcon, X,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext.jsx';
-import { LogoMark } from './ui.jsx';
+import { LogoMark, IconButton, PageSkeleton, EASE, cx } from './ui.jsx';
 
 const NAV = [
-  { to: '/dashboard', label: 'Overview', icon: LayoutDashboard, end: true },
-  { to: '/dashboard/menu', label: 'Master Menu', icon: UtensilsCrossed },
-  { to: '/dashboard/branches', label: 'Branches', icon: Store },
-  { to: '/dashboard/qr', label: 'QR Codes', icon: QrCode },
-  { to: '/dashboard/branding', label: 'Branding', icon: Palette },
-  { to: '/dashboard/settings', label: 'Settings', icon: Settings },
+  { items: [{ to: '/dashboard', label: 'Overview', icon: LayoutDashboard, end: true }] },
+  { title: 'Menu', items: [{ to: '/dashboard/menu', label: 'Master Menu', icon: UtensilsCrossed }] },
+  {
+    title: 'Locations',
+    items: [
+      { to: '/dashboard/branches', label: 'Branches', icon: Store },
+      { to: '/dashboard/qr', label: 'QR Codes', icon: QrCode },
+    ],
+  },
+  {
+    title: 'Brand',
+    items: [
+      { to: '/dashboard/branding', label: 'Branding', icon: Palette },
+      { to: '/dashboard/settings', label: 'Settings', icon: Settings },
+    ],
+  },
 ];
 
+function NavItems({ onNavigate, indicatorId }) {
+  return (
+    <nav aria-label="Main" className="flex-1 overflow-y-auto px-3 pb-4">
+      {NAV.map((group, gi) => (
+        <div key={gi} className={gi ? 'mt-5' : ''}>
+          {group.title && (
+            <div className="px-3 pb-1.5 text-[11px] font-semibold uppercase tracking-wider text-gray-500">{group.title}</div>
+          )}
+          <ul className="space-y-0.5">
+            {group.items.map(({ to, label, icon: Icon, end }) => (
+              <li key={to}>
+                <NavLink
+                  to={to}
+                  end={end}
+                  onClick={onNavigate}
+                  className={({ isActive }) =>
+                    cx(
+                      'relative flex h-10 items-center gap-3 rounded-lg px-3 text-sm font-medium transition-colors duration-150',
+                      isActive ? 'text-brand-800' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+                    )
+                  }
+                >
+                  {({ isActive }) => (
+                    <>
+                      {isActive && (
+                        <motion.span
+                          layoutId={indicatorId}
+                          aria-hidden="true"
+                          className="absolute inset-0 rounded-lg bg-brand-50 ring-1 ring-inset ring-brand-100"
+                          transition={{ type: 'spring', stiffness: 500, damping: 40 }}
+                        />
+                      )}
+                      <Icon size={18} aria-hidden="true" className={cx('relative', isActive ? 'text-brand-700' : 'text-gray-400')} />
+                      <span className="relative">{label}</span>
+                    </>
+                  )}
+                </NavLink>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ))}
+    </nav>
+  );
+}
+
+function AccountFooter({ onSignOut }) {
+  const { user, restaurant } = useAuth();
+  const name = restaurant?.nameEn || user?.businessName || 'Your brand';
+  return (
+    <div className="border-t border-gray-200 p-3">
+      <div className="flex items-center gap-3 rounded-lg px-2 py-2">
+        {restaurant?.logoUrl ? (
+          <img src={restaurant.logoUrl} alt="" className="h-9 w-9 shrink-0 rounded-lg bg-white object-contain ring-1 ring-gray-200" />
+        ) : (
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-sm font-semibold text-brand-700" aria-hidden="true">
+            {name[0]?.toUpperCase()}
+          </div>
+        )}
+        <div className="min-w-0 flex-1">
+          <div className="truncate text-sm font-semibold text-gray-900">{name}</div>
+          <div className="truncate text-xs text-gray-500">{user?.email}</div>
+        </div>
+        <IconButton label="Sign out" onClick={onSignOut} variant="danger" size="sm">
+          <LogOut size={16} />
+        </IconButton>
+      </div>
+    </div>
+  );
+}
+
+function Brand() {
+  return (
+    <div className="flex items-center gap-3 px-5 pb-5 pt-5">
+      <LogoMark size={40} />
+      <div className="leading-tight">
+        <div className="text-[15px] font-bold tracking-tight text-gray-900">DINEZA</div>
+        <div className="text-[11px] font-medium text-gray-500">Brand manager</div>
+      </div>
+    </div>
+  );
+}
+
 export default function DashboardLayout() {
-  const { user, restaurant, logout } = useAuth();
+  const { logout } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const drawerRef = useRef(null);
+  const menuButtonRef = useRef(null);
 
   const handleLogout = async () => {
     await logout();
     navigate('/login');
   };
 
-  const sidebar = (
-    <div className="flex h-full flex-col">
-      <div className="flex items-center gap-3 px-5 py-5">
-        <LogoMark size={52} />
-        <div>
-          <div className="text-[15px] font-extrabold tracking-tight text-gray-900">DINEZA</div>
-          <div className="text-[10px] font-medium uppercase tracking-widest text-gray-400">Menu Platform</div>
-        </div>
-      </div>
+  // New page: close the drawer and start at the top
+  useEffect(() => {
+    setMobileOpen(false);
+    window.scrollTo({ top: 0 });
+  }, [location.pathname]);
 
-      <nav className="flex-1 space-y-1 px-3">
-        {NAV.map(({ to, label, icon: Icon, end }) => (
-          <NavLink
-            key={to}
-            to={to}
-            end={end}
-            onClick={() => setMobileOpen(false)}
-            className={({ isActive }) =>
-              `flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-sm font-semibold transition-colors ${
-                isActive ? 'bg-brand-50 text-brand-600' : 'text-gray-500 hover:bg-gray-50 hover:text-gray-800'
-              }`
-            }
-          >
-            <Icon size={18} />
-            {label}
-          </NavLink>
-        ))}
-      </nav>
-
-      <div className="border-t border-gray-100 p-4">
-        <div className="mb-3 flex items-center gap-3 px-1.5">
-          {restaurant?.logoUrl ? (
-            <img src={restaurant.logoUrl} alt="" className="h-9 w-9 rounded-full object-cover ring-2 ring-brand-100" />
-          ) : (
-            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-brand-100 text-sm font-bold text-brand-600">
-              {(restaurant?.nameEn || user?.businessName || '?')[0]?.toUpperCase()}
-            </div>
-          )}
-          <div className="min-w-0 flex-1">
-            <div className="truncate text-sm font-bold text-gray-900">{restaurant?.nameEn || user?.businessName}</div>
-            <div className="truncate text-xs text-gray-400">{user?.email}</div>
-          </div>
-        </div>
-        <button
-          onClick={handleLogout}
-          className="flex w-full items-center gap-2.5 rounded-xl px-3.5 py-2 text-sm font-semibold text-gray-500 transition-colors hover:bg-red-50 hover:text-red-600"
-        >
-          <LogOut size={17} />
-          Sign out
-        </button>
-      </div>
-    </div>
-  );
+  // Drawer: Escape closes, focus moves in and back out
+  useEffect(() => {
+    if (!mobileOpen) return undefined;
+    const onKey = (e) => e.key === 'Escape' && setMobileOpen(false);
+    document.addEventListener('keydown', onKey);
+    const t = setTimeout(() => drawerRef.current?.querySelector('a, button')?.focus(), 50);
+    const menuButton = menuButtonRef.current;
+    return () => {
+      clearTimeout(t);
+      document.removeEventListener('keydown', onKey);
+      menuButton?.focus();
+    };
+  }, [mobileOpen]);
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    // reducedMotion="user": every animation in the dashboard follows the OS "reduce motion" setting
+    <MotionConfig reducedMotion="user">
+    <div className="dash min-h-screen">
+      <a
+        href="#main"
+        className="sr-only z-[60] rounded-lg bg-white px-4 py-2 text-sm font-semibold text-gray-900 shadow-pop focus:not-sr-only focus:fixed focus:left-4 focus:top-4"
+      >
+        Skip to content
+      </a>
+
       {/* Desktop sidebar */}
-      <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 border-r border-gray-100 bg-white lg:block">{sidebar}</aside>
+      <aside className="fixed inset-y-0 left-0 z-30 hidden w-[248px] flex-col border-r border-gray-200 bg-white lg:flex">
+        <Brand />
+        <NavItems indicatorId="nav-indicator-desktop" />
+        <AccountFooter onSignOut={handleLogout} />
+      </aside>
 
-      {/* Mobile drawer */}
-      {mobileOpen && (
-        <div className="fixed inset-0 z-40 lg:hidden">
-          <div className="absolute inset-0 bg-gray-900/50" onClick={() => setMobileOpen(false)} />
-          <aside className="animate-fade-in absolute inset-y-0 left-0 w-72 bg-white shadow-lift">
-            <button onClick={() => setMobileOpen(false)} className="absolute right-3 top-4 rounded-lg p-1.5 text-gray-400 hover:bg-gray-100">
-              <X size={18} />
-            </button>
-            {sidebar}
-          </aside>
-        </div>
-      )}
-
-      {/* Topbar (mobile) */}
-      <header className="sticky top-0 z-20 flex items-center justify-between border-b border-gray-100 bg-white/90 px-4 py-3 backdrop-blur lg:hidden">
-        <button onClick={() => setMobileOpen(true)} className="rounded-lg p-2 text-gray-600 hover:bg-gray-100">
+      {/* Mobile top bar */}
+      <header className="sticky top-0 z-20 flex h-14 items-center justify-between border-b border-gray-200 bg-white/95 px-3 backdrop-blur lg:hidden">
+        <IconButton
+          ref={menuButtonRef}
+          label="Open menu"
+          aria-expanded={mobileOpen}
+          aria-controls="mobile-nav"
+          onClick={() => setMobileOpen(true)}
+        >
           <MenuIcon size={20} />
-        </button>
+        </IconButton>
         <div className="flex items-center gap-2">
-          <LogoMark size={36} />
-          <span className="text-sm font-extrabold text-gray-900">DINEZA</span>
+          <LogoMark size={32} />
+          <span className="text-sm font-bold tracking-tight text-gray-900">DINEZA</span>
         </div>
-        <div className="w-9" />
+        <div className="w-9" aria-hidden="true" />
       </header>
 
-      <main className="px-4 py-6 sm:px-6 lg:ml-64 lg:px-10 lg:py-8">
-        <div className="mx-auto max-w-5xl">
-          <Outlet />
+      {/* Mobile drawer */}
+      <AnimatePresence>
+        {mobileOpen && (
+          <div className="fixed inset-0 z-40 lg:hidden">
+            <motion.div
+              className="absolute inset-0 bg-gray-950/50"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.18 }}
+              onClick={() => setMobileOpen(false)}
+            />
+            <motion.aside
+              id="mobile-nav"
+              ref={drawerRef}
+              aria-label="Navigation"
+              className="absolute inset-y-0 left-0 flex w-[280px] max-w-[85vw] flex-col bg-white shadow-pop"
+              initial={{ x: '-100%' }}
+              animate={{ x: 0 }}
+              exit={{ x: '-100%' }}
+              transition={{ duration: 0.26, ease: EASE }}
+            >
+              <div className="flex items-center justify-between pe-3">
+                <Brand />
+                <IconButton label="Close menu" onClick={() => setMobileOpen(false)}>
+                  <X size={18} />
+                </IconButton>
+              </div>
+              <NavItems indicatorId="nav-indicator-mobile" onNavigate={() => setMobileOpen(false)} />
+              <AccountFooter onSignOut={handleLogout} />
+            </motion.aside>
+          </div>
+        )}
+      </AnimatePresence>
+
+      <main id="main" tabIndex={-1} className="outline-none lg:pl-[248px]">
+        <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
+          {/* Enter-only transition: no exit phase, so pages never flash blank between routes */}
+          <motion.div
+            key={location.pathname}
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.2, ease: EASE }}
+          >
+            <Suspense fallback={<PageSkeleton />}>
+              <Outlet />
+            </Suspense>
+          </motion.div>
         </div>
       </main>
     </div>
+    </MotionConfig>
   );
 }

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Card, Button, Input, PageHeader } from '../../components/ui.jsx';
+import { Card, CardHeader, Button, Input, PageHeader } from '../../components/ui.jsx';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { authApi } from '../../api/endpoints.js';
 import { errMsg } from '../../api/client.js';
@@ -51,30 +51,30 @@ export default function Settings() {
   */
 
   return (
-    <div className="animate-fade-in">
-      <PageHeader title="Account Settings" subtitle="Your profile and security" />
+    <div>
+      <PageHeader title="Account settings" subtitle="Your brand manager profile." />
 
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
-        <Card className="p-6">
-          <h2 className="mb-4 text-base font-bold text-gray-900">Profile</h2>
-          <form onSubmit={saveProfile} className="space-y-4">
-            <Input label="Email" value={user?.email || ''} disabled className="!bg-gray-50 text-gray-400" />
+        <Card>
+          <CardHeader title="Profile" description="Used across your dashboard." />
+          <form onSubmit={saveProfile} className="space-y-4 p-5">
+            <Input label="Email" value={user?.email || ''} disabled hint="Your sign-in email cannot be changed here." />
             <Input label="Business name" required value={profile.businessName} onChange={(e) => setProfile({ ...profile, businessName: e.target.value })} />
             <Input label="Phone" type="tel" value={profile.phone} onChange={(e) => setProfile({ ...profile, phone: e.target.value })} />
-            <div className="flex justify-end">
+            <div className="flex justify-end border-t border-gray-100 pt-4">
               <Button type="submit" loading={savingProfile}>Save profile</Button>
             </div>
           </form>
         </Card>
 
         {/* RESTORE: change-password card (also uncomment the pw state + savePassword handler above)
-        <Card className="p-6">
-          <h2 className="mb-4 text-base font-bold text-gray-900">Change password</h2>
-          <form onSubmit={savePassword} className="space-y-4">
+        <Card>
+          <CardHeader title="Change password" />
+          <form onSubmit={savePassword} className="space-y-4 p-5">
             <Input label="Current password" type="password" required autoComplete="current-password" value={pw.currentPassword} onChange={(e) => setPw({ ...pw, currentPassword: e.target.value })} />
             <Input label="New password" type="password" required autoComplete="new-password" hint="Minimum 8 characters" value={pw.newPassword} onChange={(e) => setPw({ ...pw, newPassword: e.target.value })} />
             <Input label="Confirm new password" type="password" required autoComplete="new-password" value={pw.confirm} onChange={(e) => setPw({ ...pw, confirm: e.target.value })} />
-            <div className="flex justify-end">
+            <div className="flex justify-end border-t border-gray-100 pt-4">
               <Button type="submit" loading={savingPw}>Update password</Button>
             </div>
           </form>

@@ -5,6 +5,15 @@ import { setToken, API_BASE } from '../api/client.js';
 
 const AuthContext = createContext(null);
 
+export const isBranchManager = (user) => user?.role === 'branch_manager';
+
+// Where each role starts after signing in
+export function homePath(user) {
+  if (!user) return '/login';
+  if (isBranchManager(user)) return '/branch';
+  return user.restaurantId ? '/dashboard' : '/onboarding';
+}
+
 const IDLE_LOGOUT_MS = 30 * 60 * 1000; // auto-logout after 30 min without any activity
 const REFRESH_EVERY_MS = 10 * 60 * 1000; // keep the 15-min access token fresh while the user is active
 
@@ -14,7 +23,8 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
 
   const loadRestaurant = useCallback(async (u) => {
-    if (u?.restaurantId) {
+    // Branch managers get their (read-only) brand details from /my-branch instead
+    if (u?.restaurantId && !isBranchManager(u)) {
       try {
         const { data } = await restaurantApi.get();
         setRestaurant(data.restaurant);

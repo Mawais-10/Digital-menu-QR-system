@@ -38,6 +38,21 @@ export const branchApi = {
     downloadFile(`/branches/${id}/qr`, { format, size }, `qr-${slug}.${format}`),
 };
 
+// Branch-manager accounts (managed by the brand manager)
+export const managerApi = {
+  list: (branchId) => api.get(`/branches/${branchId}/managers`),
+  create: (branchId, data) => api.post(`/branches/${branchId}/managers`, data),
+  update: (managerId, data) => api.patch(`/managers/${managerId}`, data),
+  remove: (managerId) => api.delete(`/managers/${managerId}`),
+};
+
+// Branch manager's own branch (the branch comes from the signed-in account)
+export const myBranchApi = {
+  get: () => api.get('/my-branch'),
+  items: () => api.get('/my-branch/items'),
+  updateItem: (itemId, data) => api.patch(`/my-branch/items/${itemId}`, data),
+};
+
 // Categories & items
 export const categoryApi = {
   list: () => api.get('/categories'),

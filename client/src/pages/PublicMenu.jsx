@@ -106,22 +106,27 @@ export default function PublicMenu() {
     [slug]
   );
 
+  const soldOutIds = useMemo(() => new Set((data?.items || []).filter((i) => i.soldOut).map((i) => i.id)), [data]);
+
   const addToOrder = useCallback(
     (id, qty = 1) => {
+      // The server marks items sold out per branch; they can be viewed but not ordered
+      if (soldOutIds.has(id)) return;
       setOrderPersist((prev) => {
         const existing = prev.find((r) => r.id === id);
         if (existing) return prev.map((r) => (r.id === id ? { ...r, qty: r.qty + qty } : r));
         return [...prev, { id, qty }];
       });
     },
-    [setOrderPersist]
+    [setOrderPersist, soldOutIds]
   );
 
   const setOrderQty = useCallback(
     (id, qty) => {
+      if (qty > 0 && soldOutIds.has(id)) return;
       setOrderPersist((prev) => (qty <= 0 ? prev.filter((r) => r.id !== id) : prev.map((r) => (r.id === id ? { ...r, qty } : r))));
     },
-    [setOrderPersist]
+    [setOrderPersist, soldOutIds]
   );
 
   // Reset the modal quantity whenever a new product opens
@@ -174,8 +179,10 @@ export default function PublicMenu() {
       })
       .filter(Boolean);
   }, [data, order]);
-  const orderCount = orderRows.reduce((sum, r) => sum + r.qty, 0);
-  const orderTotal = orderRows.reduce((sum, r) => sum + r.item.price * r.qty, 0);
+  const orderableRows = orderRows.filter((r) => !r.item.soldOut);
+  const orderCount = orderableRows.reduce((sum, r) => sum + r.qty, 0);
+  const orderTotal = orderableRows.reduce((sum, r) => sum + r.item.price * r.qty, 0);
+  const hasSoldOutInOrder = orderRows.length !== orderableRows.length;
 
   // Scrollspy — highlight the category tab currently in view
   useEffect(() => {
@@ -686,8 +693,19 @@ export default function PublicMenu() {
                 </div>
               </div>
 
-              {/* Sticky action bar: quantity stepper + add to order */}
+              {/* Sticky action bar: quantity stepper + add to order (or the sold-out notice) */}
               <div className="sticky bottom-0 z-40 mt-4 flex items-center rounded-b-xl px-4 pb-4 pt-4" style={{ backgroundColor: SURFACE }}>
+                {detail.soldOut ? (
+                  <button
+                    type="button"
+                    disabled
+                    aria-disabled="true"
+                    className="flex h-12 w-full cursor-not-allowed items-center justify-center rounded-xl border border-white/15 text-sm font-semibold text-gray-400 md:text-base"
+                  >
+                    {isAr ? 'نفدت الكمية حالياً' : 'Sold out right now'}
+                  </button>
+                ) : (
+                <>
                 <div className="flex h-12 w-[7rem] shrink-0 items-center rounded-full border" style={{ borderColor: rgba(theme, 0.5) }}>
                   <button onClick={() => setDetailQty((q) => Math.max(1, q - 1))} className="flex h-full flex-1 items-center justify-center" style={{ color: theme }}>
                     <Minus size={16} />
@@ -707,6 +725,8 @@ export default function PublicMenu() {
                 >
                   {isAr ? 'أضف إلى الطلب' : 'Add to order'} · {fmtPrice(detail.price * detailQty, restaurant.currency)}
                 </button>
+                </>
+                )}
               </div>
             </div>
           </div>
@@ -740,7 +760,7 @@ export default function PublicMenu() {
               <>
                 <div className="flex-1 overflow-y-auto px-4">
                   {orderRows.map(({ item, qty }) => (
-                    <div key={item.id} className="flex items-center border-b border-white/5 py-3 last:border-b-0">
+                    <div key={item.id} className={`flex items-center border-b border-white/5 py-3 last:border-b-0 ${item.soldOut ? 'opacity-60' : ''}`}>
                       <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-md" style={{ backgroundColor: primary10 }}>
                         {item.imageUrl ? (
                           <img src={item.imageUrl} alt="" className="absolute inset-0 h-full w-full rounded-md object-cover object-center" />
@@ -752,16 +772,25 @@ export default function PublicMenu() {
                         <div className="truncate text-sm font-semibold text-gray-100">
                           {isAr ? item.nameAr || item.nameEn : item.nameEn || item.nameAr}
                         </div>
+                        {item.soldOut ? (
+                          <div className="mt-0.5 text-sm font-medium text-red-400">{isAr ? 'نفدت الكمية' : 'Sold out'}</div>
+                        ) : (
                         <div className="mt-0.5 text-sm font-medium text-gray-400">
                           {fmtPrice(item.price * qty, restaurant.currency)} <span className="text-[11px] text-gray-500">{restaurant.currency}</span>
                         </div>
+                        )}
                       </div>
                       <div className="flex h-9 w-[5.5rem] shrink-0 items-center rounded-full border" style={{ borderColor: rgba(theme, 0.5) }}>
                         <button onClick={() => setOrderQty(item.id, qty - 1)} className="flex h-full flex-1 items-center justify-center" style={{ color: theme }}>
                           <Minus size={13} />
                         </button>
                         <span className="min-w-[20px] text-center text-xs font-semibold text-gray-100">{qty}</span>
-                        <button onClick={() => setOrderQty(item.id, qty + 1)} className="flex h-full flex-1 items-center justify-center" style={{ color: theme }}>
+                        <button
+                          onClick={() => setOrderQty(item.id, qty + 1)}
+                          disabled={item.soldOut}
+                          className="flex h-full flex-1 items-center justify-center disabled:opacity-30"
+                          style={{ color: theme }}
+                        >
                           <Plus size={13} />
                         </button>
                       </div>
@@ -782,6 +811,11 @@ export default function PublicMenu() {
                       {fmtPrice(orderTotal, restaurant.currency)} <span className="text-xs font-medium text-gray-500">{restaurant.currency}</span>
                     </span>
                   </div>
+                  {hasSoldOutInOrder && (
+                    <p className="mt-2 text-center text-xs text-red-400">
+                      {isAr ? 'العناصر التي نفدت كميتها غير محسوبة في المجموع' : 'Sold-out items are not included in the total'}
+                    </p>
+                  )}
                   <p className="mt-2 text-center text-xs text-gray-500">
                     {isAr ? 'أظهر هذه القائمة للنادل لإتمام طلبك' : 'Show this list to your waiter to place the order'}
                   </p>
@@ -805,7 +839,7 @@ function ProductCard({ item, theme, onTheme, primary10, isAr, currency, fav, onF
             <SmartImage
               src={item.imageUrl}
               alt={item.nameEn}
-              className="h-full w-full"
+              className={`h-full w-full ${item.soldOut ? 'opacity-45 grayscale' : ''}`}
               imgClassName="h-full w-full object-contain p-1.5"
             />
           ) : (
@@ -833,7 +867,14 @@ function ProductCard({ item, theme, onTheme, primary10, isAr, currency, fav, onF
           >
             <Heart size={15} fill={fav ? 'currentColor' : 'none'} />
           </span>
+          {/* Sold out at this branch: still visible, cannot be added */}
+          {item.soldOut && (
+            <span className="absolute inset-x-0 bottom-2 z-10 mx-auto w-fit rounded-md bg-black/80 px-2.5 py-1 text-xs font-semibold tracking-wide text-white shadow-sm">
+              {isAr ? 'نفدت الكمية' : 'Sold out'}
+            </span>
+          )}
           {/* Overlapping circular + button — quick add to order */}
+          {!item.soldOut && (
           <span className="absolute bottom-0.5 end-0.5 flex justify-end">
             <span
               role="button"
@@ -847,6 +888,7 @@ function ProductCard({ item, theme, onTheme, primary10, isAr, currency, fav, onF
               <Plus size={18} />
             </span>
           </span>
+          )}
         </div>
 
         <div className="relative flex min-w-0 flex-col pt-2">

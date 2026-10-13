@@ -1,6 +1,7 @@
-import { createContext, useContext, useState, useCallback, useRef } from 'react';
+import { createContext, useContext, useState, useCallback, useRef, useMemo } from 'react';
 import { CheckCircle2, AlertCircle, X } from 'lucide-react';
 
+// Notifications. CSS-only animation keeps this provider (which wraps the public menu too) light.
 const ToastContext = createContext(null);
 
 export function ToastProvider({ children }) {
@@ -14,36 +15,50 @@ export function ToastProvider({ children }) {
   const push = useCallback(
     (message, type = 'success') => {
       const id = ++idRef.current;
-      setToasts((t) => [...t, { id, message, type }]);
-      setTimeout(() => dismiss(id), 3500);
+      // Keep at most three on screen
+      setToasts((t) => [...t.slice(-2), { id, message, type }]);
+      setTimeout(() => dismiss(id), type === 'error' ? 5000 : 3500);
     },
     [dismiss]
   );
 
-  const toast = {
-    success: (m) => push(m, 'success'),
-    error: (m) => push(m, 'error'),
-  };
+  const toast = useMemo(
+    () => ({
+      success: (m) => push(m, 'success'),
+      error: (m) => push(m, 'error'),
+    }),
+    [push]
+  );
 
   return (
     <ToastContext.Provider value={toast}>
       {children}
-      <div className="fixed bottom-4 left-1/2 z-[100] flex w-full max-w-sm -translate-x-1/2 flex-col gap-2 px-4">
+      <div
+        className="dash-portal pointer-events-none fixed inset-x-0 bottom-4 z-[100] mx-auto flex w-full max-w-sm flex-col gap-2 px-4"
+        aria-live="polite"
+        aria-relevant="additions"
+      >
         {toasts.map((t) => (
           <div
             key={t.id}
-            className={`animate-fade-in flex items-center gap-2.5 rounded-xl px-4 py-3 text-sm font-medium text-white shadow-lift ${
-              t.type === 'error' ? 'bg-red-500' : 'bg-gray-900'
+            role={t.type === 'error' ? 'alert' : 'status'}
+            className={`animate-pop pointer-events-auto flex items-start gap-2.5 rounded-xl px-4 py-3 text-sm font-medium text-white shadow-pop ${
+              t.type === 'error' ? 'bg-red-600' : 'bg-gray-900'
             }`}
           >
             {t.type === 'error' ? (
-              <AlertCircle size={17} className="shrink-0" />
+              <AlertCircle size={18} className="mt-px shrink-0" aria-hidden="true" />
             ) : (
-              <CheckCircle2 size={17} className="shrink-0 text-emerald-400" />
+              <CheckCircle2 size={18} className="mt-px shrink-0 text-emerald-400" aria-hidden="true" />
             )}
-            <span className="flex-1">{t.message}</span>
-            <button onClick={() => dismiss(t.id)} className="opacity-60 hover:opacity-100">
-              <X size={15} />
+            <span className="flex-1 leading-snug">{t.message}</span>
+            <button
+              type="button"
+              onClick={() => dismiss(t.id)}
+              aria-label="Dismiss notification"
+              className="-me-1 rounded p-0.5 opacity-70 transition-opacity hover:opacity-100"
+            >
+              <X size={15} aria-hidden="true" />
             </button>
           </div>
         ))}

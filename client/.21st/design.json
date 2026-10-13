@@ -1,0 +1,174 @@
+{
+  "version": 1,
+  "project": {
+    "name": "qr-menu-client",
+    "productType": "restaurant SaaS admin dashboard (QR menus)",
+    "stack": [
+      "react",
+      "tailwind-v4",
+      "vite"
+    ]
+  },
+  "sources": {
+    "tokens": [
+      "src/index.css"
+    ],
+    "components": [],
+    "assets": [],
+    "instructions": []
+  },
+  "design": {
+    "colorMode": "light",
+    "colors": {
+      "--color-brand-50": {
+        "value": "#fff7ed",
+        "source": "src/index.css"
+      },
+      "--color-brand-100": {
+        "value": "#ffedd5",
+        "source": "src/index.css"
+      },
+      "--color-brand-200": {
+        "value": "#fed7aa",
+        "source": "src/index.css"
+      },
+      "--color-brand-300": {
+        "value": "#fdba74",
+        "source": "src/index.css"
+      },
+      "--color-brand-400": {
+        "value": "#fb923c",
+        "source": "src/index.css"
+      },
+      "--color-brand-500": {
+        "value": "#f97316",
+        "source": "src/index.css"
+      },
+      "--color-brand-600": {
+        "value": "#ea580c",
+        "source": "src/index.css"
+      },
+      "--color-brand-700": {
+        "value": "#c2410c",
+        "source": "src/index.css"
+      }
+    },
+    "typography": {
+      "--font-sans": {
+        "value": "\"Poppins\", ui-sans-serif, system-ui, -apple-system, sans-serif",
+        "source": "src/index.css"
+      },
+      "--font-arabic": {
+        "value": "\"Cairo\", \"Poppins\", sans-serif",
+        "source": "src/index.css"
+      }
+    },
+    "spacing": {},
+    "radius": {
+      "controls": {
+        "value": "8px (rounded-lg)",
+        "source": "src/components/ui.jsx"
+      },
+      "surfaces": {
+        "value": "12px (rounded-xl)",
+        "source": "src/components/ui.jsx"
+      }
+    },
+    "shadows": {
+      "--shadow-soft": {
+        "value": "0 2px 12px rgb(0 0 0 / 0.06)",
+        "source": "src/index.css"
+      },
+      "--shadow-lift": {
+        "value": "0 8px 30px rgb(0 0 0 / 0.12)",
+        "source": "src/index.css"
+      }
+    },
+    "motion": {
+      "ease": {
+        "value": "cubic-bezier(0.22,1,0.36,1)",
+        "source": "src/components/ui.jsx"
+      },
+      "reducedMotion": {
+        "value": "MotionConfig reducedMotion=\"user\" in each app shell",
+        "source": "src/components/DashboardLayout.jsx"
+      }
+    },
+    "density": "comfortable"
+  },
+  "components": {
+    "installed": [
+      "src/components/ui.jsx",
+      "src/components/AvailabilityList.jsx",
+      "src/components/BranchManagers.jsx"
+    ],
+    "preferredPrimitives": [
+      "Button",
+      "IconButton",
+      "Input",
+      "Select",
+      "Textarea",
+      "Toggle",
+      "SegmentedControl",
+      "Tabs",
+      "Card",
+      "CardHeader",
+      "Badge",
+      "Modal",
+      "ConfirmDialog",
+      "ImageFrame",
+      "PageHeader",
+      "EmptyState",
+      "ErrorState",
+      "PageSkeleton",
+      "StatCard"
+    ],
+    "patterns": []
+  },
+  "constraints": {
+    "must": [
+      "Dashboard only: the customer QR menu (/menu/:slug) keeps its own dark design and must not import ui.jsx or motion",
+      "Primary actions use brand-700 (white text keeps WCAG AA); brand-500/600 for accents and focus",
+      "Every menu photo renders through ImageFrame (object-contain by default, fixed aspect ratio)",
+      "Icon-only buttons use IconButton with a label; switches use Toggle with a label",
+      "Visible :focus-visible outline on all controls (.dash / .dash-portal scopes)"
+    ],
+    "avoid": [
+      "shadcn or a second component library",
+      "emoji as icons",
+      "hover scale effects",
+      "gradients and glass effects in the dashboard",
+      "exit animations on route changes (causes blank flashes)"
+    ]
+  },
+  "decisions": [
+    {
+      "date": "2026-10-13",
+      "decision": "Dashboard redesign: neutral light surfaces, gray-200 borders, 14px body / 13px labels, grouped sidebar with animated active pill, enter-only page transitions. Segmented control pattern adapted from 21st.dev \"Segmented Control\" (ddoemonn) into JSX with motion/react.",
+      "source": "21st search + get 23552"
+    }
+  ],
+  "evidence": [
+    {
+      "fact": "design.colorMode:light",
+      "source": "src/index.css"
+    },
+    {
+      "fact": "design.tokens",
+      "source": "src/index.css"
+    },
+    {
+      "fact": "project.stack:react",
+      "source": "package.json"
+    },
+    {
+      "fact": "project.stack:tailwind-v4",
+      "source": "package.json"
+    },
+    {
+      "fact": "project.stack:vite",
+      "source": "package.json"
+    }
+  ],
+  "generatedAt": "2026-10-13T12:51:44.230Z"
+}

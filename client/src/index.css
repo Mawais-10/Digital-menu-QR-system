@@ -13,8 +13,13 @@
   --color-brand-600: #ea580c;
   --color-brand-700: #c2410c;
 
+  --color-brand-800: #9a3412;
+
   --shadow-soft: 0 2px 12px rgb(0 0 0 / 0.06);
   --shadow-lift: 0 8px 30px rgb(0 0 0 / 0.12);
+  /* Dashboard design system */
+  --shadow-card: 0 1px 2px rgb(16 24 40 / 0.04);
+  --shadow-pop: 0 12px 32px -6px rgb(16 24 40 / 0.18), 0 2px 6px rgb(16 24 40 / 0.06);
 }
 
 html {
@@ -120,4 +125,47 @@ body {
     transition-duration: 0.01ms !important;
   }
   html { scroll-behavior: auto; }
+}
+
+/* ============================================================
+   Dashboard design system (authenticated app only — the public
+   menu does not use the .dash scope)
+   ============================================================ */
+
+.dash {
+  background-color: #f6f6f7;
+  color: #111827;
+}
+
+/* Visible keyboard focus on every control, never on mouse click.
+   .dash-portal covers dialogs rendered outside the layout via portals. */
+.dash :focus-visible,
+.dash-portal :focus-visible {
+  outline: 2px solid var(--color-brand-600);
+  outline-offset: 2px;
+}
+.dash input:focus-visible,
+.dash textarea:focus-visible,
+.dash select:focus-visible,
+.dash-portal input:focus-visible,
+.dash-portal textarea:focus-visible,
+.dash-portal select:focus-visible {
+  outline: none;
+}
+
+/* Transparent-image backdrop: shows the full photo and any transparency honestly */
+.bg-checker {
+  background-color: #fafafa;
+  background-image:
+    linear-gradient(45deg, #f0f0f1 25%, transparent 25%),
+    linear-gradient(-45deg, #f0f0f1 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, #f0f0f1 75%),
+    linear-gradient(-45deg, transparent 75%, #f0f0f1 75%);
+  background-size: 16px 16px;
+  background-position: 0 0, 0 8px, 8px -8px, -8px 0;
+}
+
+/* Tabular numbers for prices and counts */
+.tnum {
+  font-variant-numeric: tabular-nums;
 }

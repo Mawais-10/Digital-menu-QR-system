@@ -79,11 +79,11 @@ export default function Onboarding() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 px-4 py-10">
+    <div className="dash min-h-screen px-4 py-10">
       <div className="mx-auto max-w-lg">
         <div className="mb-8 flex items-center justify-center gap-2.5">
           <LogoMark />
-          <span className="text-lg font-extrabold text-gray-900">DINEZA</span>
+          <span className="text-lg font-bold tracking-tight text-gray-900">DINEZA</span>
         </div>
 
         {/* Step indicator */}
@@ -91,24 +91,25 @@ export default function Onboarding() {
           {[1, 2, 3].map((s) => (
             <div key={s} className="flex items-center gap-2">
               <div
-                className={`flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold transition-colors ${
-                  step > s ? 'bg-emerald-500 text-white' : step === s ? 'bg-brand-500 text-white' : 'bg-gray-200 text-gray-500'
+                aria-current={step === s ? 'step' : undefined}
+                className={`flex h-8 w-8 items-center justify-center rounded-full text-xs font-semibold transition-colors ${
+                  step > s ? 'bg-emerald-600 text-white' : step === s ? 'bg-brand-700 text-white' : 'bg-gray-200 text-gray-600'
                 }`}
               >
                 {step > s ? <Check size={15} /> : s}
               </div>
-              {s < 3 && <div className={`h-0.5 w-10 rounded ${step > s ? 'bg-emerald-500' : 'bg-gray-200'}`} />}
+              {s < 3 && <div className={`h-0.5 w-10 rounded ${step > s ? 'bg-emerald-600' : 'bg-gray-200'}`} aria-hidden="true" />}
             </div>
           ))}
         </div>
 
-        <div className="rounded-3xl bg-white p-7 shadow-soft ring-1 ring-gray-100">
+        <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-card sm:p-7">
           {step === 1 && (
             <form onSubmit={submitProfile} className="space-y-5">
               <div className="flex items-center gap-3">
-                <div className="rounded-2xl bg-brand-50 p-3 text-brand-500"><Store size={22} /></div>
+                <div className="rounded-xl bg-brand-50 p-2.5 text-brand-700" aria-hidden="true"><Store size={22} /></div>
                 <div>
-                  <h1 className="text-lg font-extrabold text-gray-900">Restaurant profile</h1>
+                  <h1 className="text-lg font-semibold text-gray-900">Restaurant profile</h1>
                   <p className="text-sm text-gray-500">This appears on your public menu</p>
                 </div>
               </div>
@@ -117,15 +118,15 @@ export default function Onboarding() {
               <Input label="Restaurant name (Arabic)" dir="rtl" required placeholder="مثال: بيت الشاورما" value={profile.nameAr} onChange={(e) => setProfile({ ...profile, nameAr: e.target.value })} />
 
               <div>
-                <span className="mb-1.5 block text-sm font-medium text-gray-700">Logo (optional)</span>
-                <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={pickLogo} />
+                <span className="mb-1.5 block text-[13px] font-medium text-gray-700">Logo (optional)</span>
+                <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp,image/gif,image/avif" className="sr-only" tabIndex={-1} onChange={pickLogo} />
                 <button
                   type="button"
                   onClick={() => fileRef.current?.click()}
-                  className="flex w-full items-center gap-3 rounded-xl border-2 border-dashed border-gray-200 px-4 py-3 text-sm text-gray-500 transition-colors hover:border-brand-300 hover:bg-brand-50/40"
+                  className="flex w-full cursor-pointer items-center gap-3 rounded-lg border-2 border-dashed border-gray-300 px-4 py-3 text-sm text-gray-600 transition-colors hover:border-gray-400 hover:bg-gray-50"
                 >
                   {logoPreview ? (
-                    <img src={logoPreview} alt="" className="h-11 w-11 rounded-full object-cover ring-2 ring-brand-100" />
+                    <img src={logoPreview} alt="" className="h-11 w-11 rounded-lg bg-white object-contain ring-1 ring-gray-200" />
                   ) : (
                     <div className="rounded-full bg-gray-100 p-2.5 text-gray-400"><Upload size={18} /></div>
                   )}
@@ -134,14 +135,16 @@ export default function Onboarding() {
               </div>
 
               <div>
-                <span className="mb-1.5 block text-sm font-medium text-gray-700">Theme color</span>
+                <span className="mb-1.5 block text-[13px] font-medium text-gray-700">Theme color</span>
                 <div className="flex flex-wrap gap-2.5">
                   {THEME_PRESETS.map((c) => (
                     <button
                       key={c}
                       type="button"
+                      aria-label={`Theme color ${c}`}
+                      aria-pressed={profile.themeColor === c}
                       onClick={() => setProfile({ ...profile, themeColor: c })}
-                      className={`h-9 w-9 rounded-full transition-transform hover:scale-110 ${profile.themeColor === c ? 'ring-2 ring-gray-900 ring-offset-2' : ''}`}
+                      className={`h-9 w-9 cursor-pointer rounded-full transition-[box-shadow] hover:ring-2 hover:ring-gray-300 hover:ring-offset-2 ${profile.themeColor === c ? 'ring-2 ring-gray-900 ring-offset-2' : ''}`}
                       style={{ backgroundColor: c }}
                     />
                   ))}
@@ -149,7 +152,7 @@ export default function Onboarding() {
               </div>
 
               <div>
-                <span className="mb-1.5 block text-sm font-medium text-gray-700">Menu default language</span>
+                <span className="mb-1.5 block text-[13px] font-medium text-gray-700">Menu default language</span>
                 <div className="grid grid-cols-2 gap-2">
                   {[
                     { v: 'en', label: 'English first' },
@@ -158,9 +161,10 @@ export default function Onboarding() {
                     <button
                       key={v}
                       type="button"
+                      aria-pressed={profile.defaultLanguage === v}
                       onClick={() => setProfile({ ...profile, defaultLanguage: v })}
-                      className={`rounded-xl px-4 py-2.5 text-sm font-semibold ring-1 transition-colors ${v === 'ar' ? 'font-arabic' : ''} ${
-                        profile.defaultLanguage === v ? 'bg-brand-500 text-white ring-brand-500' : 'bg-white text-gray-600 ring-gray-200 hover:bg-gray-50'
+                      className={`h-10 cursor-pointer rounded-lg border px-4 text-sm font-semibold transition-colors ${v === 'ar' ? 'font-arabic' : ''} ${
+                        profile.defaultLanguage === v ? 'border-brand-700 bg-brand-700 text-white' : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
                       }`}
                     >
                       {label}
@@ -169,7 +173,7 @@ export default function Onboarding() {
                 </div>
               </div>
 
-              {error && <p className="rounded-xl bg-red-50 px-3.5 py-2.5 text-sm font-medium text-red-600">{error}</p>}
+              {error && <p role="alert" className="rounded-lg border border-red-200 bg-red-50 px-3.5 py-2.5 text-sm font-medium text-red-700">{error}</p>}
               <Button type="submit" loading={loading} className="w-full" size="lg">Continue</Button>
             </form>
           )}
@@ -177,9 +181,9 @@ export default function Onboarding() {
           {step === 2 && (
             <form onSubmit={submitBranch} className="space-y-5">
               <div className="flex items-center gap-3">
-                <div className="rounded-2xl bg-brand-50 p-3 text-brand-500"><MapPin size={22} /></div>
+                <div className="rounded-xl bg-brand-50 p-2.5 text-brand-700" aria-hidden="true"><MapPin size={22} /></div>
                 <div>
-                  <h1 className="text-lg font-extrabold text-gray-900">Add your first branch</h1>
+                  <h1 className="text-lg font-semibold text-gray-900">Add your first branch</h1>
                   <p className="text-sm text-gray-500">Each branch gets its own permanent QR code</p>
                 </div>
               </div>
@@ -190,25 +194,25 @@ export default function Onboarding() {
               <Input label="Contact number" type="tel" placeholder="+968 9xxx xxxx" value={branch.phone} onChange={(e) => setBranch({ ...branch, phone: e.target.value })} />
               <LocationField value={branch} onChange={setBranch} />
 
-              {error && <p className="rounded-xl bg-red-50 px-3.5 py-2.5 text-sm font-medium text-red-600">{error}</p>}
+              {error && <p role="alert" className="rounded-lg border border-red-200 bg-red-50 px-3.5 py-2.5 text-sm font-medium text-red-700">{error}</p>}
               <Button type="submit" loading={loading} className="w-full" size="lg">Create branch & generate QR</Button>
             </form>
           )}
 
           {step === 3 && createdBranch && (
             <div className="text-center">
-              <div className="mx-auto mb-4 w-fit rounded-2xl bg-emerald-50 p-3.5 text-emerald-500"><PartyPopper size={26} /></div>
-              <h1 className="text-xl font-extrabold text-gray-900">Your menu is live! 🎉</h1>
+              <div className="mx-auto mb-4 w-fit rounded-xl bg-emerald-50 p-3 text-emerald-700" aria-hidden="true"><PartyPopper size={24} /></div>
+              <h1 className="text-xl font-semibold text-gray-900">Your menu is live</h1>
               <p className="mt-1.5 text-sm text-gray-500">
                 This QR code is permanent — print it once, update your menu anytime.
               </p>
 
               {qr && (
-                <div className="mx-auto mt-6 w-fit rounded-3xl bg-white p-4 shadow-lift ring-1 ring-gray-100">
+                <div className="mx-auto mt-6 w-fit rounded-xl border border-gray-200 bg-white p-3">
                   <img src={qr.dataUrl} alt="Menu QR code" className="h-48 w-48" />
                 </div>
               )}
-              <p className="mt-3 break-all rounded-xl bg-gray-50 px-3 py-2 font-mono text-xs text-gray-500">{qr?.url}</p>
+              <p className="mt-3 break-all rounded-lg bg-gray-100 px-3 py-2 font-mono text-xs text-gray-600">{qr?.url}</p>
 
               <div className="mt-6 flex flex-col gap-2.5">
                 <Button

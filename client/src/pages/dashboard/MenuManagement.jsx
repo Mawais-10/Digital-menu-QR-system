@@ -1,13 +1,13 @@
-import { useEffect, useState, useRef, useMemo } from 'react';
+import { useCallback, useEffect, useState, useRef, useMemo } from 'react';
 import {
-  Plus, Pencil, Trash2, ChevronLeft, ChevronRight, ImageIcon, UtensilsCrossed, LayoutGrid, Upload,
-  FileSpreadsheet, Download, CheckCircle2, AlertTriangle, FileUp,
+  Plus, Pencil, Trash2, ChevronLeft, ChevronRight, UtensilsCrossed, LayoutGrid, Upload, Search,
+  FileSpreadsheet, Download, CheckCircle2, AlertTriangle, FileUp, Maximize2, Crop,
 } from 'lucide-react';
 import {
-  Button, Input, Textarea, Select, Modal, ConfirmDialog, Toggle, Badge, Card, Spinner, EmptyState, PageHeader,
+  Button, IconButton, Input, Textarea, Select, Modal, ConfirmDialog, Toggle, Badge, Card, EmptyState, ErrorState,
+  PageHeader, PageSkeleton, ImageFrame, SegmentedControl, cx,
 } from '../../components/ui.jsx';
 import { categoryApi, itemApi } from '../../api/endpoints.js';
-import { SmartImage } from '../../components/motion.jsx';
 import { errMsg } from '../../api/client.js';
 import { useToast } from '../../context/ToastContext.jsx';
 import { useAuth } from '../../context/AuthContext.jsx';
@@ -31,7 +31,7 @@ function LayoutPreview({ type }) {
     <div key={key} className="flex flex-1 flex-col rounded-md bg-gray-100 p-0.5">{content}</div>
   );
   return (
-    <div className="mx-auto flex h-12 w-full max-w-[76px] gap-1">
+    <div className="mx-auto flex h-12 w-full max-w-[76px] gap-1" aria-hidden="true">
       {type === 'grid' && [0, 1].map((i) => cell(<>{banner}{photo}</>, i))}
       {type === 'large' && cell(
         <>
@@ -81,8 +81,10 @@ export default function MenuManagement() {
 
   const [categories, setCategories] = useState([]);
   const [items, setItems] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [status, setStatus] = useState('loading'); // loading | ready | error
+  const [loadError, setLoadError] = useState('');
   const [activeCat, setActiveCat] = useState('all');
+  const [query, setQuery] = useState('');
 
   // category modal state
   const [catModal, setCatModal] = useState(null); // null | {mode:'create'} | {mode:'edit', category}
@@ -96,20 +98,35 @@ export default function MenuManagement() {
   const [deleting, setDeleting] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
 
-  const load = async () => {
+  const load = useCallback(async () => {
     const [c, i] = await Promise.all([categoryApi.list(), itemApi.list()]);
     setCategories(c.data.categories);
     setItems(i.data.items);
-  };
-
-  useEffect(() => {
-    load().finally(() => setLoading(false));
   }, []);
 
-  const visibleItems = useMemo(
-    () => (activeCat === 'all' ? items : items.filter((i) => i.categoryId === activeCat)),
-    [items, activeCat]
-  );
+  const initialLoad = useCallback(async () => {
+    setStatus('loading');
+    try {
+      await load();
+      setStatus('ready');
+    } catch (err) {
+      setLoadError(errMsg(err, 'Could not load the menu'));
+      setStatus('error');
+    }
+  }, [load]);
+
+  useEffect(() => {
+    initialLoad();
+  }, [initialLoad]);
+
+  const visibleItems = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return items.filter((i) => {
+      if (activeCat !== 'all' && i.categoryId !== activeCat) return false;
+      if (!q) return true;
+      return i.nameEn?.toLowerCase().includes(q) || i.nameAr?.includes(query.trim());
+    });
+  }, [items, activeCat, query]);
 
   const catName = (id) => categories.find((c) => c._id === id);
 
@@ -195,21 +212,25 @@ export default function MenuManagement() {
     }
   };
 
-  if (loading) return <Spinner />;
+  if (status === 'loading') return <PageSkeleton rows={6} />;
+  if (status === 'error') return <ErrorState title="The menu could not be loaded" message={loadError} onRetry={initialLoad} />;
+
+  const activeCategory = categories.find((c) => c._id === activeCat);
+  const activeIndex = categories.findIndex((c) => c._id === activeCat);
 
   return (
-    <div className="animate-fade-in">
+    <div>
       <PageHeader
         title="Master Menu"
-        subtitle="One menu shared across all branches — control visibility per branch"
+        subtitle="One menu shared by every branch. Branches control their own visibility and sold-out status."
         action={
-          <div className="flex flex-wrap gap-2">
-            <Button variant="secondary" onClick={() => setImportOpen(true)}><FileSpreadsheet size={16} /> Import Excel</Button>
-            <Button variant="secondary" onClick={openCatCreate}><LayoutGrid size={16} /> New category</Button>
+          <>
+            <Button variant="secondary" onClick={() => setImportOpen(true)}><FileSpreadsheet size={16} aria-hidden="true" /> Import Excel</Button>
+            <Button variant="secondary" onClick={openCatCreate}><LayoutGrid size={16} aria-hidden="true" /> New category</Button>
             <Button onClick={() => setItemModal({ mode: 'create' })} disabled={categories.length === 0}>
-              <Plus size={16} /> New item
+              <Plus size={16} aria-hidden="true" /> New item
             </Button>
-          </div>
+          </>
         }
       />
 
@@ -217,139 +238,134 @@ export default function MenuManagement() {
         <EmptyState
           icon={LayoutGrid}
           title="Start with a category"
-          subtitle='Categories group your menu — e.g. "Sandwiches", "Burgers", "Drinks". Add your first one.'
+          subtitle='Categories group your menu, for example "Sandwiches", "Burgers" or "Drinks". Add your first one, or import the whole menu from Excel.'
           action={
-            <div className="flex flex-wrap justify-center gap-2">
-              <Button onClick={openCatCreate}><Plus size={16} /> Add category</Button>
-              <Button variant="secondary" onClick={() => setImportOpen(true)}><FileSpreadsheet size={16} /> Import Excel</Button>
-            </div>
+            <>
+              <Button onClick={openCatCreate}><Plus size={16} aria-hidden="true" /> Add category</Button>
+              <Button variant="secondary" onClick={() => setImportOpen(true)}><FileSpreadsheet size={16} aria-hidden="true" /> Import Excel</Button>
+            </>
           }
         />
       ) : (
         <>
-          {/* Category bar — segmented control; actions expand only on the active pill */}
-          <div className="no-scrollbar mb-5 flex items-center gap-1 overflow-x-auto rounded-2xl bg-white p-1.5 shadow-soft ring-1 ring-gray-100">
-            <button
-              onClick={() => setActiveCat('all')}
-              className={`flex shrink-0 items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition-all duration-300 ${
-                activeCat === 'all'
-                  ? 'bg-brand-500 text-white shadow-md shadow-brand-500/30'
-                  : 'text-gray-600 hover:bg-gray-50'
-              }`}
-            >
-              All items
-              <span
-                className={`rounded-full px-1.5 py-0.5 text-[10px] font-bold leading-none ${
-                  activeCat === 'all' ? 'bg-white/25' : 'bg-gray-100 text-gray-500'
-                }`}
-              >
-                {items.length}
-              </span>
-            </button>
-
-            {categories.map((c, index) => {
-              const active = activeCat === c._id;
-              const count = items.filter((i) => i.categoryId === c._id).length;
-              return (
-                <div
-                  key={c._id}
-                  className={`flex shrink-0 items-center rounded-xl transition-all duration-300 ${
-                    active ? 'bg-brand-500 text-white shadow-md shadow-brand-500/30' : 'text-gray-600 hover:bg-gray-50'
-                  }`}
-                >
-                  <button onClick={() => setActiveCat(c._id)} className="flex items-center gap-2 py-2 pe-1 ps-3.5">
-                    <span className="text-sm font-semibold">{c.nameEn}</span>
-                    <span className={`font-arabic text-sm font-semibold ${active ? 'opacity-80' : 'text-gray-400'}`}>{c.nameAr}</span>
-                    <span
-                      className={`rounded-full px-1.5 py-0.5 text-[10px] font-bold leading-none ${
-                        active ? 'bg-white/25' : 'bg-gray-100 text-gray-500'
-                      }`}
-                    >
-                      {count}
-                    </span>
-                  </button>
-
-                  {/* Management actions — slide open only while this category is selected */}
-                  <div
-                    className={`flex items-center overflow-hidden transition-all duration-300 ease-out ${
-                      active ? 'max-w-36 pe-2 opacity-100' : 'max-w-0 pe-0 opacity-0'
-                    }`}
+          {/* Category filter */}
+          <nav aria-label="Categories" className="no-scrollbar -mx-4 mb-4 overflow-x-auto px-4 sm:mx-0 sm:px-0">
+            <div className="flex w-max gap-1.5 pb-1">
+              {[{ _id: 'all', nameEn: 'All items' }, ...categories].map((c) => {
+                const active = activeCat === c._id;
+                const count = c._id === 'all' ? items.length : items.filter((i) => i.categoryId === c._id).length;
+                return (
+                  <button
+                    key={c._id}
+                    type="button"
+                    onClick={() => setActiveCat(c._id)}
+                    aria-pressed={active}
+                    className={cx(
+                      'inline-flex h-9 cursor-pointer items-center gap-2 rounded-full border px-3.5 text-[13px] font-semibold transition-colors duration-150',
+                      active ? 'border-gray-900 bg-gray-900 text-white' : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300 hover:bg-gray-50'
+                    )}
                   >
-                    <span className="mx-1.5 h-4 w-px shrink-0 bg-white/30" />
-                    <button onClick={() => moveCategory(index, -1)} className="rounded-md p-1 text-white/75 transition-colors hover:bg-white/20 hover:text-white" title="Move left">
-                      <ChevronLeft size={14} />
-                    </button>
-                    <button onClick={() => moveCategory(index, 1)} className="rounded-md p-1 text-white/75 transition-colors hover:bg-white/20 hover:text-white" title="Move right">
-                      <ChevronRight size={14} />
-                    </button>
-                    <button onClick={() => openCatEdit(c)} className="rounded-md p-1 text-white/75 transition-colors hover:bg-white/20 hover:text-white" title="Edit category">
-                      <Pencil size={12} />
-                    </button>
-                    <button onClick={() => setCatDelete(c)} className="rounded-md p-1 text-white/75 transition-colors hover:bg-white/20 hover:text-white" title="Delete category">
-                      <Trash2 size={12} />
-                    </button>
-                  </div>
-                </div>
-              );
-            })}
+                    {c.nameEn}
+                    {c.nameAr && <span className={cx('font-arabic font-medium', active ? 'text-white/70' : 'text-gray-500')}>{c.nameAr}</span>}
+                    <span className={cx('tnum rounded-full px-1.5 text-[11px]', active ? 'bg-white/20' : 'bg-gray-100 text-gray-600')}>{count}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </nav>
+
+          {/* Toolbar: search + actions for the selected category */}
+          <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="sm:w-72">
+              <Input
+                type="search"
+                aria-label="Search items"
+                placeholder="Search items"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                leading={<Search size={16} />}
+              />
+            </div>
+            {activeCategory && (
+              <div className="flex items-center gap-1 rounded-lg border border-gray-200 bg-white p-1 shadow-card">
+                <span className="max-w-[10rem] truncate px-2 text-[13px] font-semibold text-gray-700">{activeCategory.nameEn}</span>
+                <IconButton size="sm" label="Move category earlier" disabled={activeIndex <= 0} onClick={() => moveCategory(activeIndex, -1)}>
+                  <ChevronLeft size={16} />
+                </IconButton>
+                <IconButton size="sm" label="Move category later" disabled={activeIndex >= categories.length - 1} onClick={() => moveCategory(activeIndex, 1)}>
+                  <ChevronRight size={16} />
+                </IconButton>
+                <IconButton size="sm" label="Edit category" onClick={() => openCatEdit(activeCategory)}>
+                  <Pencil size={15} />
+                </IconButton>
+                <IconButton size="sm" variant="danger" label="Delete category" onClick={() => setCatDelete(activeCategory)}>
+                  <Trash2 size={15} />
+                </IconButton>
+              </div>
+            )}
           </div>
 
-          {/* Items grid — remounts with a soft fade whenever the selected category changes */}
-          <div key={activeCat} className="animate-fade-in">
           {visibleItems.length === 0 ? (
-            <EmptyState
-              icon={UtensilsCrossed}
-              title="No items here yet"
-              subtitle="Add your first dish with a photo, bilingual name and price."
-              action={<Button onClick={() => setItemModal({ mode: 'create' })}><Plus size={16} /> Add item</Button>}
-            />
+            query ? (
+              <EmptyState icon={Search} title="No items match your search" subtitle="Try another name in English or Arabic." />
+            ) : (
+              <EmptyState
+                icon={UtensilsCrossed}
+                title="No items here yet"
+                subtitle="Add a dish with a photo, bilingual name and price."
+                action={<Button onClick={() => setItemModal({ mode: 'create' })}><Plus size={16} aria-hidden="true" /> Add item</Button>}
+              />
+            )
           ) : (
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+            <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
               {visibleItems.map((item) => (
-                <Card key={item._id} className={`overflow-hidden transition-opacity ${item.isActive ? '' : 'opacity-60'}`}>
-                  <div className="relative aspect-[4/3] bg-gray-100">
-                    {item.imageUrl ? (
-                      <SmartImage src={item.imageUrl} alt={item.nameEn} className="h-full w-full" imgClassName="h-full w-full object-cover" />
-                    ) : (
-                      <div className="flex h-full items-center justify-center text-gray-300"><ImageIcon size={36} /></div>
-                    )}
-                    {item.badgeText && (
-                      <span className="absolute start-2 top-2 rounded-full bg-red-500 px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-wide text-white shadow">
-                        {item.badgeText}
+                <li key={item._id}>
+                  <Card className={cx('flex h-full flex-col overflow-hidden transition-opacity', !item.isActive && 'opacity-60')}>
+                    <ImageFrame src={item.imageUrl} alt={item.nameEn} fit="contain" ratio="aspect-[4/3]" iconSize={32} className="border-b border-gray-100">
+                      {item.badgeText && (
+                        <span className="absolute start-2.5 top-2.5 rounded-md bg-red-600 px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide text-white shadow-sm">
+                          {item.badgeText}
+                        </span>
+                      )}
+                      <span className="tnum absolute bottom-2.5 end-2.5 rounded-md bg-white/95 px-2 py-1 text-[13px] font-semibold text-gray-900 shadow-sm ring-1 ring-gray-900/5">
+                        {fmtPrice(item.basePrice, currency)}
                       </span>
-                    )}
-                    <span className="absolute bottom-2 end-2 rounded-full bg-white/95 px-3 py-1 text-sm font-extrabold text-gray-900 shadow">
-                      {fmtPrice(item.basePrice, currency)}
-                    </span>
-                  </div>
-                  <div className="p-4">
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="min-w-0">
-                        <div className="truncate text-sm font-bold text-gray-900">{item.nameEn}</div>
-                        <div className="font-arabic truncate text-sm font-semibold text-gray-500" dir="rtl">{item.nameAr}</div>
+                    </ImageFrame>
+                    <div className="flex flex-1 flex-col p-4">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <h3 className="truncate text-sm font-semibold text-gray-900">{item.nameEn}</h3>
+                          <div className="font-arabic truncate text-left text-[13px] text-gray-500" dir="rtl">{item.nameAr}</div>
+                        </div>
+                        <Badge color="gray">{catName(item.categoryId)?.nameEn || '—'}</Badge>
                       </div>
-                      <Badge color="gray">{catName(item.categoryId)?.nameEn || '—'}</Badge>
+                      <div className="mt-auto pt-3.5" />
+                      <div className="flex items-center justify-between border-t border-gray-100 pt-3">
+                        <label className="flex cursor-pointer items-center gap-2">
+                          <Toggle
+                            checked={item.isActive}
+                            onChange={(v) => toggleItemActive(item, v)}
+                            tone="success"
+                            size="sm"
+                            label={`${item.nameEn}: active on the menu`}
+                          />
+                          <span className="text-xs font-medium text-gray-600">{item.isActive ? 'Active' : 'Hidden everywhere'}</span>
+                        </label>
+                        <div className="flex gap-0.5">
+                          <IconButton label={`Edit ${item.nameEn}`} onClick={() => setItemModal({ mode: 'edit', item })}>
+                            <Pencil size={16} />
+                          </IconButton>
+                          <IconButton label={`Delete ${item.nameEn}`} variant="danger" onClick={() => setItemDelete(item)}>
+                            <Trash2 size={16} />
+                          </IconButton>
+                        </div>
+                      </div>
                     </div>
-                    <div className="mt-3.5 flex items-center justify-between border-t border-gray-50 pt-3">
-                      <div className="flex items-center gap-2">
-                        <Toggle checked={item.isActive} onChange={(v) => toggleItemActive(item, v)} />
-                        <span className="text-xs font-medium text-gray-400">{item.isActive ? 'Active' : 'Hidden'}</span>
-                      </div>
-                      <div className="flex gap-1">
-                        <button onClick={() => setItemModal({ mode: 'edit', item })} className="rounded-lg p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-700" title="Edit">
-                          <Pencil size={15} />
-                        </button>
-                        <button onClick={() => setItemDelete(item)} className="rounded-lg p-2 text-gray-400 hover:bg-red-50 hover:text-red-500" title="Delete">
-                          <Trash2 size={15} />
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                </Card>
+                  </Card>
+                </li>
               ))}
-            </div>
+            </ul>
           )}
-          </div>
         </>
       )}
 
@@ -359,26 +375,27 @@ export default function MenuManagement() {
           <Input label="Name (English)" required placeholder="e.g. Sandwiches" value={catForm.nameEn} onChange={(e) => setCatForm({ ...catForm, nameEn: e.target.value })} />
           <Input label="Name (Arabic)" dir="rtl" required placeholder="مثال: ساندويشات" value={catForm.nameAr} onChange={(e) => setCatForm({ ...catForm, nameAr: e.target.value })} />
 
-          {/* Card template on the public menu */}
-          <div>
-            <span className="mb-1.5 block text-sm font-medium text-gray-700">Card template (public menu)</span>
+          <fieldset>
+            <legend className="mb-1.5 block text-[13px] font-medium text-gray-700">Card template on the public menu</legend>
             <div className="grid grid-cols-3 gap-2">
               {LAYOUT_OPTIONS.map(({ v, label, hint }) => (
                 <button
                   key={v}
                   type="button"
+                  aria-pressed={catForm.layout === v}
                   onClick={() => setCatForm({ ...catForm, layout: v })}
-                  className={`rounded-xl p-2.5 ring-1 transition-all ${
-                    catForm.layout === v ? 'bg-brand-50 ring-2 ring-brand-500' : 'bg-white ring-gray-200 hover:bg-gray-50'
-                  }`}
+                  className={cx(
+                    'cursor-pointer rounded-lg border p-2.5 transition-colors duration-150',
+                    catForm.layout === v ? 'border-brand-600 bg-brand-50 ring-2 ring-brand-600/20' : 'border-gray-200 bg-white hover:bg-gray-50'
+                  )}
                 >
                   <LayoutPreview type={v} />
-                  <div className="mt-1.5 text-xs font-bold text-gray-700">{label}</div>
-                  <div className="text-[10px] text-gray-400">{hint}</div>
+                  <div className="mt-1.5 text-xs font-semibold text-gray-800">{label}</div>
+                  <div className="text-[11px] text-gray-500">{hint}</div>
                 </button>
               ))}
             </div>
-          </div>
+          </fieldset>
 
           <div className="flex justify-end gap-2 pt-1">
             <Button type="button" variant="secondary" onClick={() => setCatModal(null)}>Cancel</Button>
@@ -411,7 +428,7 @@ export default function MenuManagement() {
         onConfirm={confirmCatDelete}
         loading={deleting}
         title="Delete category?"
-        message={`"${catDelete?.nameEn}" will be removed. Categories with items cannot be deleted — move or delete the items first.`}
+        message={`"${catDelete?.nameEn}" will be removed. Categories that still have items cannot be deleted, so move or delete the items first.`}
       />
       <ConfirmDialog
         open={!!itemDelete}
@@ -419,11 +436,13 @@ export default function MenuManagement() {
         onConfirm={confirmItemDelete}
         loading={deleting}
         title="Delete item?"
-        message={`"${itemDelete?.nameEn}" will be permanently removed from your menu and all branches.`}
+        message={`"${itemDelete?.nameEn}" will be permanently removed from your menu and every branch.`}
       />
     </div>
   );
 }
+
+const ACCEPT_IMAGES = 'image/jpeg,image/png,image/webp,image/gif,image/avif';
 
 function ItemEditor({ mode, item, categories, defaultCategory, currency, onClose, onSaved }) {
   const toast = useToast();
@@ -439,16 +458,32 @@ function ItemEditor({ mode, item, categories, defaultCategory, currency, onClose
   });
   const [imageFile, setImageFile] = useState(null);
   const [preview, setPreview] = useState(item?.imageUrl || '');
+  const [fit, setFit] = useState('contain'); // preview framing only — the uploaded file is never cropped
+  const [dims, setDims] = useState(null);
+  const [dragging, setDragging] = useState(false);
   const [saving, setSaving] = useState(false);
   const fileRef = useRef();
+  const objectUrl = useRef(null);
+
+  useEffect(() => () => objectUrl.current && URL.revokeObjectURL(objectUrl.current), []);
 
   const set = (key) => (e) => setForm({ ...form, [key]: e.target.value });
 
-  const pickImage = (e) => {
-    const file = e.target.files?.[0];
+  const pickFile = (file) => {
     if (!file) return;
+    if (!/^image\/(jpeg|png|webp|gif|avif)$/.test(file.type)) {
+      toast.error('Choose a JPG, PNG, WebP, GIF or AVIF image');
+      return;
+    }
+    if (file.size > 8 * 1024 * 1024) {
+      toast.error('Image is larger than 8 MB');
+      return;
+    }
+    if (objectUrl.current) URL.revokeObjectURL(objectUrl.current);
+    objectUrl.current = URL.createObjectURL(file);
     setImageFile(file);
-    setPreview(URL.createObjectURL(file));
+    setPreview(objectUrl.current);
+    setDims(null);
   };
 
   const submit = async (e) => {
@@ -473,70 +508,120 @@ function ItemEditor({ mode, item, categories, defaultCategory, currency, onClose
     }
   };
 
+  const orientation = dims ? (dims.w > dims.h * 1.05 ? 'Landscape' : dims.h > dims.w * 1.05 ? 'Portrait' : 'Square') : null;
+
   return (
-    <Modal open onClose={onClose} title={mode === 'edit' ? 'Edit item' : 'New menu item'} wide>
-      <form onSubmit={submit} className="space-y-4">
-        {/* Image */}
-        <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={pickImage} />
-        <button
-          type="button"
-          onClick={() => fileRef.current?.click()}
-          className="relative block w-full overflow-hidden rounded-2xl border-2 border-dashed border-gray-200 transition-colors hover:border-brand-300"
-        >
-          {preview ? (
-            <>
-              <img src={preview} alt="" className="aspect-[16/8] w-full object-cover" />
-              <span className="absolute bottom-2 end-2 flex items-center gap-1.5 rounded-full bg-gray-900/70 px-3 py-1.5 text-xs font-semibold text-white backdrop-blur">
-                <Upload size={13} /> Change photo
-              </span>
-            </>
-          ) : (
-            <div className="flex aspect-[16/7] flex-col items-center justify-center gap-2 text-gray-400">
-              <Upload size={22} />
-              <span className="text-sm font-medium">Upload food photo</span>
-              <span className="text-xs text-gray-300">JPG / PNG, up to 8MB — compressed automatically</span>
-            </div>
-          )}
-        </button>
-
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <Input label="Name (English)" required placeholder="e.g. Twins Shawarma" value={form.nameEn} onChange={set('nameEn')} />
-          <Input label="Name (Arabic)" dir="rtl" required placeholder="مثال: توينز شاورما" value={form.nameAr} onChange={set('nameAr')} />
-        </div>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <Textarea label="Description (English)" placeholder="Optional" value={form.descriptionEn} onChange={set('descriptionEn')} />
-          <Textarea label="Description (Arabic)" dir="rtl" placeholder="اختياري" value={form.descriptionAr} onChange={set('descriptionAr')} />
-        </div>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-          <Select label="Category" required value={form.categoryId} onChange={set('categoryId')}>
-            {categories.map((c) => (
-              <option key={c._id} value={c._id}>{c.nameEn}</option>
-            ))}
-          </Select>
-          <Input
-            label={`Price (${currency})`}
-            type="number"
-            step="0.001"
-            min="0"
-            required
-            placeholder="1.995"
-            value={form.basePrice}
-            onChange={set('basePrice')}
-          />
-          <Input label="Promo badge" placeholder='e.g. "NEW" or "20% OFF"' value={form.badgeText} onChange={set('badgeText')} />
-        </div>
-
-        <div className="flex items-center justify-between rounded-xl bg-gray-50 px-4 py-3">
-          <div>
-            <div className="text-sm font-semibold text-gray-800">Active on menu</div>
-            <div className="text-xs text-gray-400">Inactive items are hidden from every branch</div>
+    <Modal open onClose={onClose} title={mode === 'edit' ? 'Edit item' : 'New menu item'} size="xl">
+      <form onSubmit={submit} className="grid grid-cols-1 gap-6 md:grid-cols-[minmax(0,17rem)_minmax(0,1fr)]">
+        {/* Photo */}
+        <div className="space-y-3">
+          <span className="block text-[13px] font-medium text-gray-700">Photo</span>
+          <input ref={fileRef} type="file" accept={ACCEPT_IMAGES} className="sr-only" tabIndex={-1} onChange={(e) => pickFile(e.target.files?.[0])} />
+          <div
+            onDragOver={(e) => {
+              e.preventDefault();
+              setDragging(true);
+            }}
+            onDragLeave={() => setDragging(false)}
+            onDrop={(e) => {
+              e.preventDefault();
+              setDragging(false);
+              pickFile(e.dataTransfer.files?.[0]);
+            }}
+            className={cx('overflow-hidden rounded-xl border transition-colors', dragging ? 'border-brand-600 ring-4 ring-brand-600/15' : 'border-gray-200')}
+          >
+            {preview ? (
+              <div className="relative aspect-[4/3] w-full overflow-hidden bg-checker">
+                <img
+                  src={preview}
+                  alt="Selected item photo"
+                  onLoad={(e) => setDims({ w: e.currentTarget.naturalWidth, h: e.currentTarget.naturalHeight })}
+                  className={cx('absolute inset-0 h-full w-full', fit === 'cover' ? 'object-cover' : 'object-contain p-[4%]')}
+                />
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => fileRef.current?.click()}
+                className="flex aspect-[4/3] w-full cursor-pointer flex-col items-center justify-center gap-2 bg-gray-50 px-4 text-center text-gray-500 transition-colors hover:bg-gray-100"
+              >
+                <Upload size={22} aria-hidden="true" />
+                <span className="text-sm font-medium text-gray-700">Upload a food photo</span>
+                <span className="text-xs">or drop it here · JPG, PNG, WebP up to 8 MB</span>
+              </button>
+            )}
           </div>
-          <Toggle checked={form.isActive} onChange={(v) => setForm({ ...form, isActive: v })} />
+
+          {preview && (
+            <>
+              <SegmentedControl
+                label="Preview framing"
+                value={fit}
+                onChange={setFit}
+                fullWidth
+                size="sm"
+                options={[
+                  { value: 'contain', label: 'Fit image', icon: <Maximize2 size={13} aria-hidden="true" /> },
+                  { value: 'cover', label: 'Fill frame', icon: <Crop size={13} aria-hidden="true" /> },
+                ]}
+              />
+              <p className="text-xs leading-relaxed text-gray-500">
+                {fit === 'contain'
+                  ? 'The whole photo, as it appears on the menu cards.'
+                  : 'How a cropped thumbnail would look.'}{' '}
+                Preview only: your photo is saved uncropped
+                {dims ? ` (${dims.w} × ${dims.h}, ${orientation.toLowerCase()})` : ''}.
+              </p>
+              <Button type="button" variant="secondary" size="sm" className="w-full" onClick={() => fileRef.current?.click()}>
+                <Upload size={14} aria-hidden="true" /> Replace photo
+              </Button>
+            </>
+          )}
         </div>
 
-        <div className="flex justify-end gap-2 pt-1">
-          <Button type="button" variant="secondary" onClick={onClose}>Cancel</Button>
-          <Button type="submit" loading={saving}>{mode === 'edit' ? 'Save changes' : 'Add item'}</Button>
+        {/* Details */}
+        <div className="min-w-0 space-y-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <Input label="Name (English)" required placeholder="e.g. Twins Shawarma" value={form.nameEn} onChange={set('nameEn')} />
+            <Input label="Name (Arabic)" dir="rtl" required placeholder="مثال: توينز شاورما" value={form.nameAr} onChange={set('nameAr')} />
+          </div>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <Textarea label="Description (English)" placeholder="Optional" value={form.descriptionEn} onChange={set('descriptionEn')} />
+            <Textarea label="Description (Arabic)" dir="rtl" placeholder="اختياري" value={form.descriptionAr} onChange={set('descriptionAr')} />
+          </div>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+            <Select label="Category" required value={form.categoryId} onChange={set('categoryId')}>
+              {categories.map((c) => (
+                <option key={c._id} value={c._id}>{c.nameEn}</option>
+              ))}
+            </Select>
+            <Input
+              label={`Price (${currency})`}
+              type="number"
+              inputMode="decimal"
+              step="0.001"
+              min="0"
+              required
+              placeholder="1.995"
+              className="tnum"
+              value={form.basePrice}
+              onChange={set('basePrice')}
+            />
+            <Input label="Promo badge" placeholder="NEW or 20% OFF" value={form.badgeText} onChange={set('badgeText')} />
+          </div>
+
+          <div className="flex items-center justify-between gap-4 rounded-lg border border-gray-200 px-4 py-3">
+            <div>
+              <div className="text-sm font-medium text-gray-900">Active on the menu</div>
+              <div className="text-xs text-gray-500">Inactive items are hidden at every branch.</div>
+            </div>
+            <Toggle checked={form.isActive} onChange={(v) => setForm({ ...form, isActive: v })} tone="success" label="Active on the menu" />
+          </div>
+
+          <div className="flex justify-end gap-2 pt-1">
+            <Button type="button" variant="secondary" onClick={onClose}>Cancel</Button>
+            <Button type="submit" loading={saving}>{mode === 'edit' ? 'Save changes' : 'Add item'}</Button>
+          </div>
         </div>
       </form>
     </Modal>
@@ -592,39 +677,49 @@ function ImportDialog({ onClose, onDone }) {
   };
 
   const summary = result?.summary;
-  const step = (n) => (
-    <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-brand-50 text-xs font-bold text-brand-600">{n}</span>
-  );
+  const steps = [
+    'Download the template and fill one row per item. Write a category once and the rows below it belong to it.',
+    <>Put each photo in the <b className="font-semibold text-gray-800">Image</b> cell (Excel: Insert, Pictures, Place in Cell) or paste a web link to it.</>,
+    'Upload the file. New categories are created automatically, and items with the same name are updated rather than duplicated.',
+  ];
 
   return (
-    <Modal open onClose={onClose} title="Import menu from Excel" wide>
+    <Modal
+      open
+      onClose={onClose}
+      title="Import menu from Excel"
+      size="lg"
+      footer={
+        <>
+          <Button type="button" variant="secondary" onClick={onClose}>{summary ? 'Done' : 'Cancel'}</Button>
+          {!summary && (
+            <Button type="button" onClick={submit} loading={importing} disabled={!file}>
+              <Upload size={16} aria-hidden="true" /> {importing ? 'Importing, this can take a minute with photos' : 'Import menu'}
+            </Button>
+          )}
+        </>
+      }
+    >
       <div className="space-y-5">
-        <ol className="space-y-2 text-sm text-gray-600">
-          <li className="flex gap-3">
-            {step(1)}
-            <span>Download the template and fill one row per item. Write a category once and the rows below it belong to it.</span>
-          </li>
-          <li className="flex gap-3">
-            {step(2)}
-            <span>
-              Put each photo in the <b>Image</b> cell (Excel: Insert &gt; Pictures &gt; Place in Cell) or paste a web link to it.
-            </span>
-          </li>
-          <li className="flex gap-3">
-            {step(3)}
-            <span>Upload the file. New categories are created automatically; items with the same name are updated, not duplicated.</span>
-          </li>
+        <ol className="space-y-2.5 text-sm text-gray-600">
+          {steps.map((text, i) => (
+            <li key={i} className="flex gap-3">
+              <span className="tnum flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-brand-50 text-xs font-semibold text-brand-800" aria-hidden="true">{i + 1}</span>
+              <span className="leading-relaxed">{text}</span>
+            </li>
+          ))}
         </ol>
 
         <Button variant="secondary" size="sm" onClick={downloadTemplate} loading={downloading}>
-          <Download size={14} /> Download template (.xlsx)
+          <Download size={14} aria-hidden="true" /> Download template (.xlsx)
         </Button>
 
         <input
           ref={fileRef}
           type="file"
           accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-          className="hidden"
+          className="sr-only"
+          tabIndex={-1}
           onChange={(e) => pick(e.target.files?.[0])}
         />
         <button
@@ -633,31 +728,32 @@ function ImportDialog({ onClose, onDone }) {
           onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
           onDragLeave={() => setDragging(false)}
           onDrop={(e) => { e.preventDefault(); setDragging(false); pick(e.dataTransfer.files?.[0]); }}
-          className={`flex w-full flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed px-4 py-8 text-center transition-colors ${
-            dragging ? 'border-brand-400 bg-brand-50' : 'border-gray-200 hover:border-brand-300'
-          }`}
+          className={cx(
+            'flex w-full cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed px-4 py-8 text-center transition-colors',
+            dragging ? 'border-brand-600 bg-brand-50' : 'border-gray-300 hover:border-gray-400 hover:bg-gray-50'
+          )}
         >
           {file ? (
             <>
-              <FileSpreadsheet size={26} className="text-emerald-500" />
-              <span className="text-sm font-semibold text-gray-800">{file.name}</span>
-              <span className="text-xs text-gray-400">{(file.size / 1024 / 1024).toFixed(2)} MB. Click to choose a different file</span>
+              <FileSpreadsheet size={26} className="text-emerald-600" aria-hidden="true" />
+              <span className="text-sm font-semibold text-gray-900">{file.name}</span>
+              <span className="text-xs text-gray-500">{(file.size / 1024 / 1024).toFixed(2)} MB · click to choose a different file</span>
             </>
           ) : (
             <>
-              <FileUp size={26} className="text-gray-400" />
-              <span className="text-sm font-medium text-gray-600">Drop your filled Excel file here, or click to browse</span>
-              <span className="text-xs text-gray-300">.xlsx up to 40MB including photos</span>
+              <FileUp size={26} className="text-gray-400" aria-hidden="true" />
+              <span className="text-sm font-medium text-gray-700">Drop your filled Excel file here, or click to browse</span>
+              <span className="text-xs text-gray-500">.xlsx up to 40 MB including photos</span>
             </>
           )}
         </button>
 
         {result?.errors && (
-          <div className="rounded-2xl bg-red-50 p-4 ring-1 ring-red-100">
-            <div className="flex items-center gap-2 text-sm font-bold text-red-700">
-              <AlertTriangle size={16} /> {result.message}
+          <div className="rounded-xl border border-red-200 bg-red-50 p-4" role="alert">
+            <div className="flex items-center gap-2 text-sm font-semibold text-red-800">
+              <AlertTriangle size={16} aria-hidden="true" /> {result.message}
             </div>
-            <ul className="mt-2 max-h-48 space-y-1 overflow-y-auto text-xs text-red-700">
+            <ul className="mt-2 max-h-48 space-y-1 overflow-y-auto text-xs text-red-800">
               {result.errors.map((e, i) => (
                 <li key={i}>
                   <span className="font-semibold">{e.row ? `Row ${e.row}: ` : ''}</span>
@@ -665,23 +761,30 @@ function ImportDialog({ onClose, onDone }) {
                 </li>
               ))}
             </ul>
-            <div className="mt-2 text-xs text-red-500">Nothing was imported. Fix these rows in Excel and upload again.</div>
+            <div className="mt-2 text-xs text-red-700">Nothing was imported. Fix these rows in Excel and upload again.</div>
           </div>
         )}
 
         {summary && (
-          <div className="rounded-2xl bg-emerald-50 p-4 ring-1 ring-emerald-100">
-            <div className="flex items-center gap-2 text-sm font-bold text-emerald-800">
-              <CheckCircle2 size={16} /> Import complete
+          <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4" role="status">
+            <div className="flex items-center gap-2 text-sm font-semibold text-emerald-900">
+              <CheckCircle2 size={16} aria-hidden="true" /> Import complete
             </div>
-            <div className="mt-2 grid grid-cols-2 gap-2 text-xs text-emerald-900 sm:grid-cols-4">
-              <div className="rounded-xl bg-white/70 px-3 py-2"><div className="text-lg font-extrabold">{summary.itemsCreated}</div>items added</div>
-              <div className="rounded-xl bg-white/70 px-3 py-2"><div className="text-lg font-extrabold">{summary.itemsUpdated}</div>items updated</div>
-              <div className="rounded-xl bg-white/70 px-3 py-2"><div className="text-lg font-extrabold">{summary.categoriesCreated}</div>categories added</div>
-              <div className="rounded-xl bg-white/70 px-3 py-2"><div className="text-lg font-extrabold">{summary.imagesUploaded}</div>photos uploaded</div>
+            <div className="mt-3 grid grid-cols-2 gap-2 text-xs text-emerald-900 sm:grid-cols-4">
+              {[
+                [summary.itemsCreated, 'items added'],
+                [summary.itemsUpdated, 'items updated'],
+                [summary.categoriesCreated, 'categories added'],
+                [summary.imagesUploaded, 'photos uploaded'],
+              ].map(([v, l]) => (
+                <div key={l} className="rounded-lg bg-white/80 px-3 py-2">
+                  <div className="tnum text-lg font-semibold">{v}</div>
+                  <div>{l}</div>
+                </div>
+              ))}
             </div>
             {summary.warnings?.length > 0 && (
-              <ul className="mt-3 max-h-40 space-y-1 overflow-y-auto text-xs text-amber-800">
+              <ul className="mt-3 max-h-40 space-y-1 overflow-y-auto text-xs text-amber-900">
                 {summary.warnings.map((w, i) => (
                   <li key={i}><span className="font-semibold">Row {w.row}: </span>{w.message}</li>
                 ))}
@@ -689,15 +792,6 @@ function ImportDialog({ onClose, onDone }) {
             )}
           </div>
         )}
-
-        <div className="flex justify-end gap-2 pt-1">
-          <Button type="button" variant="secondary" onClick={onClose}>{summary ? 'Done' : 'Cancel'}</Button>
-          {!summary && (
-            <Button type="button" onClick={submit} loading={importing} disabled={!file}>
-              <Upload size={16} /> {importing ? 'Importing, this can take a minute with photos' : 'Import menu'}
-            </Button>
-          )}
-        </div>
       </div>
     </Modal>
   );
