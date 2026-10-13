@@ -11,7 +11,7 @@ export default function AuthShell({ title, subtitle, children, footer }) {
         <div className="pattern-arabesque absolute inset-0 opacity-40" />
         <div className="relative flex h-full flex-col justify-between p-12">
           <Link to="/" className="flex items-center gap-2.5">
-            <div className="rounded-xl bg-white/95 p-1"><LogoMark size={30} /></div>
+            <div className="rounded-xl bg-white/95 p-1"><LogoMark size={38} /></div>
             <span className="text-lg font-extrabold text-white">DINEZA</span>
           </Link>
 
@@ -48,7 +48,7 @@ export default function AuthShell({ title, subtitle, children, footer }) {
       <div className="flex flex-1 items-center justify-center px-5 py-10">
         <div className="w-full max-w-sm">
           <Link to="/" className="mb-8 flex items-center gap-2 lg:hidden">
-            <LogoMark size={30} />
+            <LogoMark size={40} />
             <span className="text-lg font-extrabold text-gray-900">DINEZA</span>
           </Link>
           <h1 className="text-2xl font-extrabold text-gray-900">{title}</h1>

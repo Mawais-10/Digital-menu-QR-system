@@ -188,7 +188,7 @@ export function PageHeader({ title, subtitle, action }) {
 }
 
 // DINEZA brand mark (assets live in client/public)
-export const LogoMark = ({ size = 34 }) => (
+export const LogoMark = ({ size = 40 }) => (
   <img
     src="/dineza-icon.png"
     alt="DINEZA"

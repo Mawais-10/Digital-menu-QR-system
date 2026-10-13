@@ -27,8 +27,8 @@ export default function DashboardLayout() {
 
   const sidebar = (
     <div className="flex h-full flex-col">
-      <div className="flex items-center gap-2.5 px-5 py-5">
-        <LogoMark />
+      <div className="flex items-center gap-3 px-5 py-5">
+        <LogoMark size={52} />
         <div>
           <div className="text-[15px] font-extrabold tracking-tight text-gray-900">DINEZA</div>
           <div className="text-[10px] font-medium uppercase tracking-widest text-gray-400">Menu Platform</div>
@@ -103,7 +103,7 @@ export default function DashboardLayout() {
           <MenuIcon size={20} />
         </button>
         <div className="flex items-center gap-2">
-          <LogoMark size={28} />
+          <LogoMark size={36} />
           <span className="text-sm font-extrabold text-gray-900">DINEZA</span>
         </div>
         <div className="w-9" />
