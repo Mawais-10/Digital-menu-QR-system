@@ -21,6 +21,7 @@ const LAYOUT_OPTIONS = [
   { v: 'list', label: 'List', hint: 'Rows + details' },
   { v: 'hero', label: 'Featured', hint: 'Big photo' },
   { v: 'minimal', label: 'Elegant', hint: 'No banner' },
+  { v: 'pricelist', label: 'Price list', hint: 'Names + prices' },
 ];
 
 // Tiny schematic preview of each public-menu card template
@@ -58,6 +59,17 @@ function LayoutPreview({ type }) {
           <span className="absolute inset-x-0 bottom-0 h-2.5 bg-gradient-to-t from-gray-700/80 to-transparent" />
           <span className="absolute bottom-0.5 left-0.5 h-1 w-5 rounded-sm bg-white/90" />
           <span className="absolute bottom-0.5 right-0.5 h-1.5 w-2.5 rounded-sm bg-brand-500" />
+        </div>
+      )}
+      {type === 'pricelist' && cell(
+        <div className="flex flex-1 flex-col justify-around px-0.5">
+          {[0, 1, 2].map((i) => (
+            <div key={i} className="flex items-center gap-0.5">
+              <span className="h-1 flex-1 rounded-sm bg-gray-300" />
+              <span className="h-1 w-2.5 rounded-sm bg-gray-500" />
+              <span className="h-1.5 w-1.5 rounded-full bg-brand-500" />
+            </div>
+          ))}
         </div>
       )}
       {type === 'minimal' && [0, 1].map((i) =>

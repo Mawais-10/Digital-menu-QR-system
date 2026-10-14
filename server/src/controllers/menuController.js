@@ -12,7 +12,7 @@ export async function listCategories(req, res) {
   res.json({ categories });
 }
 
-const LAYOUTS = ['grid', 'large', 'compact', 'list', 'hero', 'minimal'];
+const LAYOUTS = ['grid', 'large', 'compact', 'list', 'hero', 'minimal', 'pricelist'];
 
 export async function createCategory(req, res) {
   const { nameEn, nameAr, layout } = req.body || {};

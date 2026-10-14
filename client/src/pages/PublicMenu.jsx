@@ -473,24 +473,35 @@ export default function PublicMenu() {
                 </span>
               </div>
 
-              <div className="-mx-1.5 flex flex-wrap">
-                {catItems.map((item) => (
-                  <ProductCard
-                    key={item.id}
-                    item={item}
-                    theme={theme}
-                    onTheme={onTheme}
-                    accent={accent}
-                    primary10={primary10}
-                    isAr={isAr}
-                    currency={restaurant.currency}
-                    fav={favorites.includes(item.id)}
-                    onFav={() => toggleFavorite(item.id)}
-                    onOpen={() => setDetail(item)}
-                    onAdd={() => addToOrder(item.id, 1)}
-                  />
-                ))}
-              </div>
+              {c.layout === 'pricelist' ? (
+                <PriceList
+                  items={catItems}
+                  theme={theme}
+                  onTheme={onTheme}
+                  isAr={isAr}
+                  currency={restaurant.currency}
+                  onAdd={(id) => addToOrder(id, 1)}
+                />
+              ) : (
+                <div className="-mx-1.5 flex flex-wrap">
+                  {catItems.map((item) => (
+                    <ProductCard
+                      key={item.id}
+                      item={item}
+                      theme={theme}
+                      onTheme={onTheme}
+                      accent={accent}
+                      primary10={primary10}
+                      isAr={isAr}
+                      currency={restaurant.currency}
+                      fav={favorites.includes(item.id)}
+                      onFav={() => toggleFavorite(item.id)}
+                      onOpen={() => setDetail(item)}
+                      onAdd={() => addToOrder(item.id, 1)}
+                    />
+                  ))}
+                </div>
+              )}
             </section>
           );
         })
@@ -943,6 +954,45 @@ function ProductCard({ item, theme, onTheme, accent, primary10, isAr, currency, 
           </span>
         </div>
       </button>
+    </div>
+  );
+}
+
+/* ---------- Price list: names and prices only, for toppings and extras that have no photos ---------- */
+function PriceList({ items, theme, onTheme, isAr, currency, onAdd }) {
+  return (
+    <div className="overflow-hidden rounded-lg px-3.5" style={{ backgroundColor: SURFACE }}>
+      {/* -mb-px tucks the last row's divider under the rounded edge */}
+      <ul className="-mb-px grid grid-cols-1 gap-x-8 sm:grid-cols-2">
+        {items.map((item) => {
+          const label = isAr ? item.nameAr || item.nameEn : item.nameEn || item.nameAr;
+          return (
+            <li key={item.id} className="flex min-h-[3.25rem] items-center gap-3 border-b border-white/[0.07] py-2">
+              <span className={`min-w-0 flex-1 break-words text-[15px] leading-snug ${item.soldOut ? 'text-gray-500' : 'text-gray-100'}`}>
+                {label}
+              </span>
+              {item.soldOut ? (
+                <span className="shrink-0 text-xs font-semibold text-red-400">{isAr ? 'نفدت الكمية' : 'Sold out'}</span>
+              ) : (
+                <>
+                  <span className="tnum shrink-0 whitespace-nowrap text-sm font-semibold text-gray-50">
+                    {fmtPrice(item.price, currency)} <span className="text-[11px] font-medium text-gray-500">{currency}</span>
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => onAdd(item.id)}
+                    aria-label={isAr ? `أضف ${label} إلى الطلب` : `Add ${label} to order`}
+                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition-transform active:scale-90"
+                    style={{ backgroundColor: theme, color: onTheme }}
+                  >
+                    <Plus size={16} />
+                  </button>
+                </>
+              )}
+            </li>
+          );
+        })}
+      </ul>
     </div>
   );
 }

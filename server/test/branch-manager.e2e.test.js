@@ -360,3 +360,25 @@ test('revoking a manager deletes the account; deleting a branch removes its mana
   assert.equal((await post('/auth/login', { email: 'omar@e2e.test', password: 'manager123' })).status, 401);
   assert.equal((await get('/my-branch', { token: omar.data.accessToken })).status, 401);
 });
+
+test('price-list layout for toppings is accepted and reaches the public menu', async () => {
+  const t = { token: A.token };
+  const made = await post('/categories', { nameEn: 'Toppings', nameAr: 'إضافات', layout: 'pricelist' }, t);
+  assert.equal(made.status, 201);
+  assert.equal(made.data.category.layout, 'pricelist');
+  const item = await post('/items', { nameEn: 'Honey', nameAr: 'عسل', basePrice: 0.315, categoryId: made.data.category._id }, t);
+  assert.equal(item.status, 201);
+
+  const drinks = (await get('/categories', t)).data.categories.find((c) => c.nameEn === 'Drinks');
+  const switched = await patch(`/categories/${drinks._id}`, { layout: 'pricelist' }, t);
+  assert.equal(switched.status, 200);
+  assert.equal(switched.data.category.layout, 'pricelist');
+  assert.equal((await patch(`/categories/${drinks._id}`, { layout: 'carousel' }, t)).status, 400, 'unknown layouts are refused');
+  assert.equal((await patch(`/categories/${drinks._id}`, { layout: 'grid' }, t)).status, 200);
+
+  const menu = await get(`/public/menu/${A.branch1.slug}`);
+  assert.equal(menu.status, 200);
+  assert.equal(menu.data.categories.find((c) => c.nameEn === 'Toppings').layout, 'pricelist');
+  assert.equal(menu.data.categories.find((c) => c.nameEn === 'Drinks').layout, 'grid');
+  assert.ok(menu.data.items.some((i) => i.nameEn === 'Honey'));
+});

@@ -8,7 +8,7 @@ const categorySchema = new mongoose.Schema(
     // Card template used on the public menu:
     // grid = 2-col banner cards, large = full-width + circular price, compact = 3-col small,
     // list = horizontal rows, hero = full-bleed photo cards, minimal = elegant no-banner cards
-    layout: { type: String, enum: ['grid', 'large', 'compact', 'list', 'hero', 'minimal'], default: 'grid' },
+    layout: { type: String, enum: ['grid', 'large', 'compact', 'list', 'hero', 'minimal', 'pricelist'], default: 'grid' },
     sortOrder: { type: Number, default: 0 },
   },
   { timestamps: true }

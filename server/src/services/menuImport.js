@@ -6,8 +6,11 @@ import { extractInCellImages } from '../utils/xlsxImages.js';
 
 export const MAX_IMPORT_ROWS = 1000;
 const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
-const LAYOUTS = ['grid', 'large', 'compact', 'list', 'hero', 'minimal'];
-const LAYOUT_ALIASES = { standard: 'grid', featured: 'hero', elegant: 'minimal', full: 'large', 'full width': 'large', rows: 'list' };
+const LAYOUTS = ['grid', 'large', 'compact', 'list', 'hero', 'minimal', 'pricelist'];
+const LAYOUT_ALIASES = {
+  standard: 'grid', featured: 'hero', elegant: 'minimal', full: 'large', 'full width': 'large', rows: 'list',
+  'price list': 'pricelist', prices: 'pricelist', toppings: 'pricelist', extras: 'pricelist', 'add ons': 'pricelist', addons: 'pricelist',
+};
 
 // Accepted header spellings (normalised: lowercase, punctuation -> space)
 const COLUMNS = {
@@ -406,7 +409,7 @@ export async function buildTemplate() {
     '   c) Paste a web link (https://...) to a picture.',
     '   Leave the cell empty for no photo. Photos are compressed and resized automatically after upload.',
     '5. Active: yes/no (empty = yes). Hidden items stay in your menu but are not shown to customers.',
-    '6. Layout (only used when the category is new): grid, large, compact, list, hero or minimal.',
+    '6. Layout (only used when the category is new): grid, large, compact, list, hero, minimal, or pricelist (names and prices only, no photos, good for toppings and extras).',
     '7. Re-importing the same file is safe: items with the same category and English name are updated, not duplicated.',
     '',
     'Max 1000 items per import. Keep the file as .xlsx (Excel Workbook).',
