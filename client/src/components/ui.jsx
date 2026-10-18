@@ -2,7 +2,7 @@ import { forwardRef, useEffect, useId, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, Loader2, AlertTriangle, RefreshCw, ImageIcon, ArrowLeft, ChevronDown, ChevronLeft, ChevronRight, ArrowUpRight } from 'lucide-react';
+import { X, Loader2, AlertTriangle, RefreshCw, ImageIcon, ArrowLeft, ChevronDown, ArrowUpRight } from 'lucide-react';
 
 /* ==========================================================================
    DINEZA dashboard design system
@@ -379,7 +379,7 @@ export function Tabs({ tabs, value, onChange, label, idBase, className = '' }) {
 
 /* ---------- Horizontal scroll row ----------
    A single row of pills that scrolls sideways. Touch swipes natively; with a mouse the
-   wheel scrolls it sideways, it can be dragged, and edge arrows jump a screen at a time.
+   wheel scrolls it sideways and it can be dragged.
    activeKey: when it changes, the [aria-pressed="true"] child is scrolled into view. */
 
 const prefersReducedMotion = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -387,15 +387,10 @@ const prefersReducedMotion = () => window.matchMedia('(prefers-reduced-motion: r
 export function ScrollRow({ children, label, activeKey, className = '', innerClassName = '' }) {
   const ref = useRef(null);
   const drag = useRef(null);
-  const [edges, setEdges] = useState({ left: false, right: false });
 
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
-    const update = () => {
-      const max = el.scrollWidth - el.clientWidth;
-      setEdges({ left: el.scrollLeft > 1, right: el.scrollLeft < max - 1 });
-    };
     // Vertical wheel scrolls the row sideways; at either end the page scrolls as usual
     const onWheel = (e) => {
       if (e.ctrlKey || Math.abs(e.deltaX) >= Math.abs(e.deltaY)) return;
@@ -406,17 +401,8 @@ export function ScrollRow({ children, label, activeKey, className = '', innerCla
       e.preventDefault();
       el.scrollLeft = next;
     };
-    update();
-    el.addEventListener('scroll', update, { passive: true });
     el.addEventListener('wheel', onWheel, { passive: false });
-    const ro = new ResizeObserver(update);
-    ro.observe(el);
-    if (el.firstElementChild) ro.observe(el.firstElementChild);
-    return () => {
-      el.removeEventListener('scroll', update);
-      el.removeEventListener('wheel', onWheel);
-      ro.disconnect();
-    };
+    return () => el.removeEventListener('wheel', onWheel);
   }, []);
 
   useEffect(() => {
@@ -455,35 +441,8 @@ export function ScrollRow({ children, label, activeKey, className = '', innerCla
     }
   };
 
-  const page = (dir) => {
-    const el = ref.current;
-    el.scrollBy({ left: dir * el.clientWidth * 0.7, behavior: prefersReducedMotion() ? 'auto' : 'smooth' });
-  };
-
-  const arrow = (dir, show) => (
-    <div
-      className={cx(
-        'pointer-events-none absolute inset-y-0 hidden items-center transition-opacity duration-150 sm:flex',
-        dir < 0 ? 'left-0 bg-gradient-to-r pr-8' : 'right-0 justify-end bg-gradient-to-l pl-8',
-        'from-[#f6f6f7] from-40% to-transparent',
-        show ? 'opacity-100' : 'opacity-0'
-      )}
-    >
-      <IconButton
-        label={dir < 0 ? 'Scroll left' : 'Scroll right'}
-        variant="outline"
-        size="sm"
-        tabIndex={-1}
-        onClick={() => page(dir)}
-        className={cx('rounded-full', show ? 'pointer-events-auto' : '')}
-      >
-        {dir < 0 ? <ChevronLeft size={16} /> : <ChevronRight size={16} />}
-      </IconButton>
-    </div>
-  );
-
   return (
-    <nav aria-label={label} className={cx('relative', className)}>
+    <nav aria-label={label} className={className}>
       <div
         ref={ref}
         className={cx('no-scrollbar select-none overflow-x-auto', innerClassName)}
@@ -495,8 +454,6 @@ export function ScrollRow({ children, label, activeKey, className = '', innerCla
       >
         {children}
       </div>
-      {arrow(-1, edges.left)}
-      {arrow(1, edges.right)}
     </nav>
   );
 }
