@@ -2,18 +2,16 @@ import bcrypt from 'bcryptjs';
 import User from '../models/User.js';
 import Branch from '../models/Branch.js';
 import { HttpError } from '../middleware/error.js';
+import { cleanUsername, cleanNewPassword } from '../utils/credentials.js';
 
 // Brand manager (owner) manages the branch-manager accounts of their own branches.
 // Every lookup is scoped to the owner's restaurant, so ids from another brand simply 404.
-
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const MIN_PASSWORD = 8;
 
 function managerJSON(user, branch) {
   return {
     id: user._id,
     name: user.name,
-    email: user.email,
+    username: user.username,
     phone: user.phone,
     isActive: user.isActive !== false,
     branchId: user.branchId,
@@ -46,21 +44,6 @@ function cleanName(name) {
   return value;
 }
 
-async function cleanEmail(email, exceptId) {
-  const value = String(email ?? '').toLowerCase().trim();
-  if (!EMAIL_RE.test(value)) throw new HttpError(400, 'A valid email is required');
-  const taken = await User.findOne({ email: value, ...(exceptId ? { _id: { $ne: exceptId } } : {}) });
-  if (taken) throw new HttpError(409, 'An account with this email already exists');
-  return value;
-}
-
-function cleanPassword(password) {
-  if (typeof password !== 'string' || password.length < MIN_PASSWORD) {
-    throw new HttpError(400, `Password must be at least ${MIN_PASSWORD} characters`);
-  }
-  return password;
-}
-
 // GET /api/branches/:id/managers
 export async function listManagers(req, res) {
   const branch = await ownedBranch(req, req.params.id);
@@ -72,16 +55,17 @@ export async function listManagers(req, res) {
   res.json({ managers: managers.map((m) => managerJSON(m, branch)) });
 }
 
-// POST /api/branches/:id/managers  { name, email, password, phone? }
+// POST /api/branches/:id/managers  { name, username, password, phone? }
 export async function createManager(req, res) {
   const branch = await ownedBranch(req, req.params.id);
-  const { name, email, password, phone } = req.body || {};
+  const { name, username: rawUsername, password, phone } = req.body || {};
+  const username = await cleanUsername(rawUsername);
   const manager = await User.create({
     role: 'branch_manager',
     name: cleanName(name),
-    email: await cleanEmail(email),
+    username,
     phone: String(phone ?? '').trim(),
-    passwordHash: await bcrypt.hash(cleanPassword(password), 11),
+    passwordHash: await bcrypt.hash(cleanNewPassword(password, username), 11),
     restaurantId: req.user.restaurantId,
     branchId: branch._id,
     createdBy: req.user._id,
@@ -90,11 +74,11 @@ export async function createManager(req, res) {
   res.status(201).json({ manager: managerJSON(manager, branch) });
 }
 
-// PATCH /api/managers/:managerId  { name?, email?, phone?, password?, isActive? }
+// PATCH /api/managers/:managerId  { name?, username?, phone?, password?, isActive? }
 // The branch assignment and role are fixed here: a manager cannot be promoted or moved by this call.
 export async function updateManager(req, res) {
   const manager = await ownedManager(req);
-  const { name, email, phone, password, isActive, role, branchId, restaurantId } = req.body || {};
+  const { name, username, phone, password, isActive, role, branchId, restaurantId } = req.body || {};
   if (role !== undefined || branchId !== undefined || restaurantId !== undefined) {
     throw new HttpError(400, 'Role and branch assignment cannot be changed. Create a new manager for another branch.');
   }
@@ -102,15 +86,17 @@ export async function updateManager(req, res) {
   let endSessions = false;
   if (name !== undefined) manager.name = cleanName(name);
   if (phone !== undefined) manager.phone = String(phone ?? '').trim();
-  if (email !== undefined) {
-    const next = await cleanEmail(email, manager._id);
-    if (next !== manager.email) {
-      manager.email = next;
+  if (username !== undefined) {
+    const next = await cleanUsername(username, manager._id);
+    if (next !== manager.username) {
+      manager.username = next;
       endSessions = true;
     }
   }
   if (password !== undefined && password !== '') {
-    manager.passwordHash = await bcrypt.hash(cleanPassword(password), 11);
+    manager.passwordHash = await bcrypt.hash(cleanNewPassword(password, manager.username), 11);
+    // A password chosen by the brand manager meets the rules, so no forced change is needed
+    manager.mustChangePassword = false;
     endSessions = true;
   }
   if (isActive !== undefined) {

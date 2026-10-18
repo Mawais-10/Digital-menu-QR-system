@@ -8,8 +8,13 @@ export const ROLES = ['owner', 'super_admin', 'branch_manager'];
 
 const userSchema = new mongoose.Schema(
   {
-    email: { type: String, required: true, unique: true, lowercase: true, trim: true },
+    // Sign-in name: lowercase, unique across every account (rules in utils/credentials.js)
+    username: { type: String, required: true, lowercase: true, trim: true },
+    // Accounts made before usernames still carry their old sign-in email; new ones have none
+    email: { type: String, lowercase: true, trim: true },
     passwordHash: { type: String, required: true },
+    // Set at sign-in when the password does not meet the current rules; cleared once it is changed
+    mustChangePassword: { type: Boolean, default: false },
     // Brand name for owners; branch managers carry a personal `name` instead
     businessName: {
       type: String,
@@ -36,10 +41,18 @@ const userSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+userSchema.index({ username: 1 }, { unique: true, name: 'username_unique' });
+// Unique only where an email exists, so the many accounts without one never collide
+userSchema.index(
+  { email: 1 },
+  { unique: true, name: 'email_unique_when_set', partialFilterExpression: { email: { $type: 'string' } } }
+);
+
 userSchema.methods.toSafeJSON = function () {
   return {
     id: this._id,
-    email: this.email,
+    username: this.username,
+    mustChangePassword: this.mustChangePassword === true,
     businessName: this.businessName,
     name: this.name,
     phone: this.phone,

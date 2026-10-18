@@ -8,6 +8,7 @@ const DashboardLayout = lazy(() => import('./components/DashboardLayout.jsx'));
 const BranchLayout = lazy(() => import('./components/BranchLayout.jsx'));
 // const Landing = lazy(() => import('./pages/Landing.jsx'));   // RESTORE: landing page (also uncomment its route below)
 const Login = lazy(() => import('./pages/auth/Login.jsx'));
+const ChangePassword = lazy(() => import('./pages/auth/ChangePassword.jsx'));
 // const Signup = lazy(() => import('./pages/auth/Signup.jsx')); // RESTORE: signup page (also uncomment its route below)
 const Onboarding = lazy(() => import('./pages/Onboarding.jsx'));
 const Overview = lazy(() => import('./pages/dashboard/Overview.jsx'));
@@ -35,6 +36,7 @@ function Protected({ children, needsRestaurant = true }) {
   const location = useLocation();
   if (loading) return <Spinner className="min-h-screen" />;
   if (!user) return <Navigate to="/login" state={{ from: location }} replace />;
+  if (user.mustChangePassword) return <Navigate to="/change-password" replace />;
   if (isBranchManager(user)) return <Navigate to="/branch" replace />;
   if (needsRestaurant && !user.restaurantId) return <Navigate to="/onboarding" replace />;
   if (!needsRestaurant && user.restaurantId) return <Navigate to="/dashboard" replace />;
@@ -47,7 +49,17 @@ function BranchOnly({ children }) {
   const location = useLocation();
   if (loading) return <Spinner className="min-h-screen" />;
   if (!user) return <Navigate to="/login" state={{ from: location }} replace />;
+  if (user.mustChangePassword) return <Navigate to="/change-password" replace />;
   if (!isBranchManager(user)) return <Navigate to={homePath(user)} replace />;
+  return children;
+}
+
+// Signed in, but the old password has to be replaced first
+function NeedsNewPassword({ children }) {
+  const { user, loading } = useAuth();
+  if (loading) return <Spinner className="min-h-screen" />;
+  if (!user) return <Navigate to="/login" replace />;
+  if (!user.mustChangePassword) return <Navigate to={homePath(user)} replace />;
   return children;
 }
 
@@ -70,6 +82,7 @@ export default function App() {
       <Route path="/menu/:slug" element={<PublicMenu />} />
 
       <Route path="/login" element={<GuestOnly><Login /></GuestOnly>} />
+      <Route path="/change-password" element={<NeedsNewPassword><ChangePassword /></NeedsNewPassword>} />
       {/* RESTORE: signup page
       <Route path="/signup" element={<GuestOnly><Signup /></GuestOnly>} />
       */}

@@ -10,6 +10,8 @@ export const isBranchManager = (user) => user?.role === 'branch_manager';
 // Where each role starts after signing in
 export function homePath(user) {
   if (!user) return '/login';
+  // A password from before the current rules has to be replaced before anything else
+  if (user.mustChangePassword) return '/change-password';
   if (isBranchManager(user)) return '/branch';
   return user.restaurantId ? '/dashboard' : '/onboarding';
 }
@@ -61,8 +63,8 @@ export function AuthProvider({ children }) {
     return () => window.removeEventListener('qm:logout', onLogout);
   }, []);
 
-  const login = async (email, password) => {
-    const { data } = await authApi.login({ email, password });
+  const login = async (username, password) => {
+    const { data } = await authApi.login({ username, password });
     setToken(data.accessToken);
     setUser(data.user);
     await loadRestaurant(data.user);

@@ -59,7 +59,7 @@ export default function BranchLayout() {
             </div>
             <div className="truncate text-xs text-gray-500">
               {restaurant?.nameEn ? `${restaurant.nameEn} · ` : ''}
-              {user?.name || user?.email}
+              {user?.name || user?.username}
             </div>
           </div>
           {branch && (

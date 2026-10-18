@@ -75,11 +75,16 @@ const post = (u, body, o = {}) => call('POST', u, { ...o, body });
 const patch = (u, body, o = {}) => call('PATCH', u, { ...o, body });
 const del = (u, o) => call('DELETE', u, o);
 
+// Passwords that meet the sign-in rules (10+ chars, upper, lower, number, symbol)
+const OWNER_PW = 'Owner#Pass2026';
+const MANAGER_PW = 'Manager#2026x';
+const NEW_PW = 'NewPass#4567';
+
 async function makeBrand(tag) {
   const signup = await post('/auth/signup', {
     businessName: `${tag} Brand`,
-    email: `${tag}-owner@e2e.test`,
-    password: 'ownerpass123',
+    username: `${tag}owner1`,
+    password: OWNER_PW,
   });
   assert.equal(signup.status, 201, JSON.stringify(signup.data));
   const token = signup.data.accessToken;
@@ -125,24 +130,26 @@ test('setup: two brands with branches and items', async () => {
 });
 
 test('brand manager creates a branch manager for one branch', async () => {
-  const bad = await post(`/branches/${A.branch1._id}/managers`, { name: 'Sara', email: 'sara@e2e.test', password: 'short' }, { token: A.token });
+  const bad = await post(`/branches/${A.branch1._id}/managers`, { name: 'Sara', username: 'sara.alpha1', password: 'short' }, { token: A.token });
   assert.equal(bad.status, 400, 'short password is refused');
 
   const res = await post(
     `/branches/${A.branch1._id}/managers`,
-    { name: 'Sara', email: 'Sara@E2E.test', password: 'manager123' },
+    { name: 'Sara', username: 'Sara.Alpha1', password: MANAGER_PW },
     { token: A.token }
   );
   assert.equal(res.status, 201, JSON.stringify(res.data));
   manager = res.data.manager;
-  assert.equal(manager.email, 'sara@e2e.test');
+  assert.equal(manager.username, 'sara.alpha1', 'usernames are stored in lowercase');
   assert.equal(String(manager.branchId), String(A.branch1._id));
   assert.equal(manager.isActive, true);
 
-  const dup = await post(`/branches/${A.branch2._id}/managers`, { name: 'Dup', email: 'sara@e2e.test', password: 'manager123' }, { token: A.token });
-  assert.equal(dup.status, 409, 'emails are unique');
+  const dup = await post(`/branches/${A.branch2._id}/managers`, { name: 'Dup', username: 'SARA.alpha1', password: MANAGER_PW }, { token: A.token });
+  assert.equal(dup.status, 409, 'usernames are unique, whatever the case');
+  const takenByOwner = await post(`/branches/${A.branch2._id}/managers`, { name: 'Dup', username: 'xenoowner1', password: MANAGER_PW }, { token: A.token });
+  assert.equal(takenByOwner.status, 409, "a manager cannot reuse another brand owner's username");
 
-  const foreign = await post(`/branches/${X.branch1._id}/managers`, { name: 'Z', email: 'z@e2e.test', password: 'manager123' }, { token: A.token });
+  const foreign = await post(`/branches/${X.branch1._id}/managers`, { name: 'Z', username: 'zed.xeno1', password: MANAGER_PW }, { token: A.token });
   assert.equal(foreign.status, 404, "cannot create a manager on another brand's branch");
 
   const list = await get(`/branches/${A.branch1._id}/managers`, { token: A.token });
@@ -153,9 +160,10 @@ test('brand manager creates a branch manager for one branch', async () => {
 });
 
 test('branch manager signs in and sees only their branch', async () => {
-  const login = await post('/auth/login', { email: 'sara@e2e.test', password: 'manager123' });
+  const login = await post('/auth/login', { username: 'sara.alpha1', password: MANAGER_PW });
   assert.equal(login.status, 200, JSON.stringify(login.data));
   assert.equal(login.data.user.role, 'branch_manager');
+  assert.equal(login.data.user.mustChangePassword, false, 'a password that meets the rules is kept');
   assert.equal(String(login.data.user.branchId), String(A.branch1._id));
   mToken = login.data.accessToken;
   mCookie = login.cookie;
@@ -225,7 +233,7 @@ test('branch manager cannot reach brand-level APIs', async () => {
     ['PATCH', `/branches/${A.branch1._id}/items/${id1}`, { customPrice: 0.1 }],
     ['GET', `/branches/${A.branch1._id}/qr-preview`],
     ['GET', `/branches/${A.branch1._id}/managers`],
-    ['POST', `/branches/${A.branch1._id}/managers`, { name: 'N', email: 'n@e2e.test', password: 'manager123' }],
+    ['POST', `/branches/${A.branch1._id}/managers`, { name: 'N', username: 'n.alpha123', password: MANAGER_PW }],
     ['PATCH', `/managers/${manager.id}`, { isActive: true }],
     ['DELETE', `/managers/${manager.id}`],
     ['PATCH', '/auth/me', { businessName: 'Mine now' }],
@@ -320,16 +328,18 @@ test('deactivating a manager ends their access immediately', async () => {
   assert.equal(withOldToken.data.code, 'ACCOUNT_DISABLED');
   const refresh = await post('/auth/refresh', {}, { cookie: mCookie });
   assert.equal(refresh.status, 401);
-  const login = await post('/auth/login', { email: 'sara@e2e.test', password: 'manager123' });
+  const login = await post('/auth/login', { username: 'sara.alpha1', password: MANAGER_PW });
   assert.equal(login.status, 403);
 });
 
 test('reactivating and resetting the password works; old password stops working', async () => {
-  const res = await patch(`/managers/${manager.id}`, { isActive: true, password: 'newpass456', name: 'Sara K' }, { token: A.token });
+  const weak = await patch(`/managers/${manager.id}`, { password: 'newpass456' }, { token: A.token });
+  assert.equal(weak.status, 400, 'a reset password must meet the rules too');
+  const res = await patch(`/managers/${manager.id}`, { isActive: true, password: NEW_PW, name: 'Sara K' }, { token: A.token });
   assert.equal(res.status, 200, JSON.stringify(res.data));
   assert.equal(res.data.manager.name, 'Sara K');
-  assert.equal((await post('/auth/login', { email: 'sara@e2e.test', password: 'manager123' })).status, 401);
-  const ok = await post('/auth/login', { email: 'sara@e2e.test', password: 'newpass456' });
+  assert.equal((await post('/auth/login', { username: 'sara.alpha1', password: MANAGER_PW })).status, 401);
+  const ok = await post('/auth/login', { username: 'sara.alpha1', password: NEW_PW });
   assert.equal(ok.status, 200);
   mToken = ok.data.accessToken;
 });
@@ -349,15 +359,15 @@ test('brand manager workflows are unchanged', async () => {
 test('revoking a manager deletes the account; deleting a branch removes its managers', async () => {
   const gone = await del(`/managers/${manager.id}`, { token: A.token });
   assert.equal(gone.status, 200);
-  assert.equal((await post('/auth/login', { email: 'sara@e2e.test', password: 'newpass456' })).status, 401);
+  assert.equal((await post('/auth/login', { username: 'sara.alpha1', password: NEW_PW })).status, 401);
   assert.equal((await get('/my-branch', { token: mToken })).status, 401);
 
-  const m2 = await post(`/branches/${A.branch2._id}/managers`, { name: 'Omar', email: 'omar@e2e.test', password: 'manager123' }, { token: A.token });
+  const m2 = await post(`/branches/${A.branch2._id}/managers`, { name: 'Omar', username: 'omar.alpha2', password: MANAGER_PW }, { token: A.token });
   assert.equal(m2.status, 201);
-  const omar = await post('/auth/login', { email: 'omar@e2e.test', password: 'manager123' });
+  const omar = await post('/auth/login', { username: 'omar.alpha2', password: MANAGER_PW });
   assert.equal(omar.status, 200);
   assert.equal((await del(`/branches/${A.branch2._id}`, { token: A.token })).status, 200);
-  assert.equal((await post('/auth/login', { email: 'omar@e2e.test', password: 'manager123' })).status, 401);
+  assert.equal((await post('/auth/login', { username: 'omar.alpha2', password: MANAGER_PW })).status, 401);
   assert.equal((await get('/my-branch', { token: omar.data.accessToken })).status, 401);
 });
 
@@ -381,4 +391,93 @@ test('price-list layout for toppings is accepted and reaches the public menu', a
   assert.equal(menu.data.categories.find((c) => c.nameEn === 'Toppings').layout, 'pricelist');
   assert.equal(menu.data.categories.find((c) => c.nameEn === 'Drinks').layout, 'grid');
   assert.ok(menu.data.items.some((i) => i.nameEn === 'Honey'));
+});
+
+// ---- Username + password rules --------------------------------------------------------------------
+
+test('sign-in is by username only, in any letter case', async () => {
+  const upper = await post('/auth/login', { username: 'ALPHAOWNER1', password: OWNER_PW });
+  assert.equal(upper.status, 200, JSON.stringify(upper.data));
+  assert.equal(upper.data.user.username, 'alphaowner1');
+  assert.equal(upper.data.user.email, undefined, 'no email in the account payload');
+  assert.equal((await post('/auth/login', { username: 'alphaowner1', password: 'Owner#Pass2025' })).status, 401);
+  assert.equal((await post('/auth/login', { email: 'alpha-owner@e2e.test', password: OWNER_PW })).status, 401, 'email sign-in is gone');
+  A.token = upper.data.accessToken;
+});
+
+test('usernames must follow the rules', async () => {
+  const tryName = (username) => post('/auth/signup', { businessName: 'Rules', username, password: OWNER_PW });
+  const refused = {
+    'short1a': 'too short',
+    'abcdefghijklmnopqrstuvwxyz12345': 'too long',
+    'nonumbers': 'no number',
+    '1startswithdigit': 'starts with a number',
+    '_starts.with1': 'starts with a symbol',
+    'has space1': 'space',
+    'emoji☃name1': 'non-English character',
+    'dash-name12': 'dash',
+    'double..dot1': 'two symbols in a row',
+    'endswith1_': 'ends with a symbol',
+    'admin.cafe1': 'reserved',
+    'dinezastaff1': 'reserved',
+    '': 'empty',
+  };
+  for (const [name, why] of Object.entries(refused)) {
+    const res = await tryName(name);
+    assert.equal(res.status, 400, `"${name}" should be refused (${why}), got ${res.status} ${JSON.stringify(res.data)}`);
+  }
+  assert.equal((await tryName('alphaowner1')).status, 409, 'taken username');
+  assert.equal((await tryName('good.name_2026')).status, 201, 'a valid username is accepted');
+});
+
+test('passwords must follow the rules', async () => {
+  const refused = {
+    'Sh0rt!': 'too short',
+    'alllowercase1!': 'no capital',
+    'ALLUPPERCASE1!': 'no small letter',
+    'NoNumbersHere!': 'no number',
+    'NoSymbols12345': 'no symbol',
+    'Has Space#1234': 'space',
+    'Xpwd.owner2026#Aa': 'contains the username',
+  };
+  for (const [pw, why] of Object.entries(refused)) {
+    const res = await post('/auth/signup', { businessName: 'Rules', username: 'pwd.owner2026', password: pw });
+    assert.equal(res.status, 400, `"${pw}" should be refused (${why}), got ${res.status}`);
+  }
+  assert.equal((await post('/auth/signup', { businessName: 'Rules', username: 'pwd.owner2026', password: 'Strong#Pass123' })).status, 201);
+});
+
+test('an old weak password works once, then must be replaced', async () => {
+  const bcrypt = (await import('bcryptjs')).default;
+  const { default: User } = await import('../src/models/User.js');
+  await User.create({
+    username: 'legacy.owner1',
+    businessName: 'Legacy',
+    email: 'legacy@e2e.test',
+    passwordHash: await bcrypt.hash('oldpass1', 11),
+  });
+  const first = await post('/auth/login', { username: 'legacy.owner1', password: 'oldpass1' });
+  assert.equal(first.status, 200);
+  assert.equal(first.data.user.mustChangePassword, true);
+  const t = { token: first.data.accessToken };
+
+  const me = await get('/auth/me', t);
+  assert.equal(me.data.user.mustChangePassword, true, 'the flag survives a page reload');
+  assert.equal((await patch('/auth/password', { currentPassword: 'wrong', newPassword: 'Legacy#Pass2026' }, t)).status, 400);
+  assert.equal((await patch('/auth/password', { currentPassword: 'oldpass1', newPassword: 'stillweak1' }, t)).status, 400);
+  const changed = await patch('/auth/password', { currentPassword: 'oldpass1', newPassword: 'Legacy#Pass2026' }, t);
+  assert.equal(changed.status, 200, JSON.stringify(changed.data));
+  assert.equal(changed.data.user.mustChangePassword, false);
+
+  assert.equal((await post('/auth/login', { username: 'legacy.owner1', password: 'oldpass1' })).status, 401);
+  const again = await post('/auth/login', { username: 'legacy.owner1', password: 'Legacy#Pass2026' });
+  assert.equal(again.status, 200);
+  assert.equal(again.data.user.mustChangePassword, false);
+});
+
+test('two accounts without an email can coexist', async () => {
+  const { default: User } = await import('../src/models/User.js');
+  await User.syncIndexes();
+  const withoutEmail = await User.countDocuments({ email: { $exists: false } });
+  assert.ok(withoutEmail >= 2, `expected several accounts without email, found ${withoutEmail}`);
 });

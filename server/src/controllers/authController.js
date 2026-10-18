@@ -2,8 +2,7 @@ import bcrypt from 'bcryptjs';
 import User from '../models/User.js';
 import { HttpError } from '../middleware/error.js';
 import { signAccessToken, signRefreshToken, verifyRefreshToken, hashToken, refreshCookieOptions } from '../utils/tokens.js';
-
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+import { cleanUsername, cleanNewPassword, normalizeUsername, passwordProblem } from '../utils/credentials.js';
 
 async function issueSession(res, user) {
   const accessToken = signAccessToken(user);
@@ -15,17 +14,14 @@ async function issueSession(res, user) {
 }
 
 export async function signup(req, res) {
-  const { businessName, email, phone, password } = req.body || {};
+  const { businessName, username: rawUsername, phone, password } = req.body || {};
   if (!businessName?.trim()) throw new HttpError(400, 'Business name is required');
-  if (!EMAIL_RE.test(email || '')) throw new HttpError(400, 'A valid email is required');
-  if (!password || password.length < 8) throw new HttpError(400, 'Password must be at least 8 characters');
-
-  const existing = await User.findOne({ email: email.toLowerCase().trim() });
-  if (existing) throw new HttpError(409, 'An account with this email already exists');
+  const username = await cleanUsername(rawUsername);
+  cleanNewPassword(password, username);
 
   const user = await User.create({
     businessName: businessName.trim(),
-    email: email.toLowerCase().trim(),
+    username,
     phone: (phone || '').trim(),
     passwordHash: await bcrypt.hash(password, 11),
   });
@@ -35,14 +31,16 @@ export async function signup(req, res) {
 }
 
 export async function login(req, res) {
-  const { email, password } = req.body || {};
-  const user = await User.findOne({ email: (email || '').toLowerCase().trim() });
+  const { username, password } = req.body || {};
+  const user = await User.findOne({ username: normalizeUsername(username) });
   if (!user || !(await bcrypt.compare(password || '', user.passwordHash))) {
-    throw new HttpError(401, 'Invalid email or password');
+    throw new HttpError(401, 'Invalid username or password');
   }
   if (user.isActive === false) {
     throw new HttpError(403, 'This account has been deactivated. Contact your brand manager.');
   }
+  // A password set before the current rules still works once, then has to be replaced
+  user.mustChangePassword = passwordProblem(password, user.username) !== null;
   const accessToken = await issueSession(res, user);
   res.json({ accessToken, user: user.toSafeJSON() });
 }
@@ -103,8 +101,12 @@ export async function changePassword(req, res) {
   if (!(await bcrypt.compare(currentPassword || '', req.user.passwordHash))) {
     throw new HttpError(400, 'Current password is incorrect');
   }
-  if (!newPassword || newPassword.length < 8) throw new HttpError(400, 'New password must be at least 8 characters');
+  cleanNewPassword(newPassword, req.user.username);
+  if (await bcrypt.compare(newPassword, req.user.passwordHash)) {
+    throw new HttpError(400, 'Choose a password different from the current one');
+  }
   req.user.passwordHash = await bcrypt.hash(newPassword, 11);
+  req.user.mustChangePassword = false;
   await req.user.save();
-  res.json({ ok: true });
+  res.json({ ok: true, user: req.user.toSafeJSON() });
 }

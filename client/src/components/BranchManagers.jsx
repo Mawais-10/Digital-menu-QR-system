@@ -1,58 +1,19 @@
 import { useCallback, useEffect, useState } from 'react';
-import { UserPlus, Pencil, Trash2, UserCheck, UserX, Copy, Eye, EyeOff, Wand2, ShieldCheck, Check, X, Users } from 'lucide-react';
+import { UserPlus, Pencil, Trash2, UserCheck, UserX, Copy, ShieldCheck, Check, X, Users } from 'lucide-react';
 import {
   Button, IconButton, Input, Modal, ConfirmDialog, Card, CardHeader, Badge, EmptyState, ErrorState, Skeleton, Toggle, cx,
 } from './ui.jsx';
+import { UsernameField, PasswordField } from './CredentialFields.jsx';
 import { managerApi } from '../api/endpoints.js';
 import { errMsg } from '../api/client.js';
 import { useToast } from '../context/ToastContext.jsx';
+import { generatePassword } from '../lib/credentials.js';
 
 const CAN = ['Mark items sold out or available', 'Turn items on or off for this branch', 'See this branch’s menu only'];
 const CANNOT = ['Edit names, prices, photos or categories', 'See other branches or brand settings', 'Create or manage other accounts'];
 
-function generatePassword() {
-  const chars = 'ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
-  const bytes = new Uint32Array(12);
-  crypto.getRandomValues(bytes);
-  return Array.from(bytes, (b) => chars[b % chars.length]).join('');
-}
-
-function PasswordField({ value, onChange, label, hint, required, autoComplete = 'new-password' }) {
-  const [show, setShow] = useState(false);
-  return (
-    <Input
-      label={label}
-      type={show ? 'text' : 'password'}
-      required={required}
-      minLength={8}
-      autoComplete={autoComplete}
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-      hint={hint}
-      className="pe-20 font-mono"
-      trailing={
-        <>
-          <IconButton size="sm" label={show ? 'Hide password' : 'Show password'} onClick={() => setShow((s) => !s)}>
-            {show ? <EyeOff size={15} /> : <Eye size={15} />}
-          </IconButton>
-          <IconButton
-            size="sm"
-            label="Generate a strong password"
-            onClick={() => {
-              onChange(generatePassword());
-              setShow(true);
-            }}
-          >
-            <Wand2 size={15} />
-          </IconButton>
-        </>
-      }
-    />
-  );
-}
-
-function initials(name, email) {
-  const src = (name || email || '?').trim();
+function initials(name, username) {
+  const src = (name || username || '?').trim();
   const parts = src.split(/\s+/).filter(Boolean);
   return ((parts[0]?.[0] || '') + (parts[1]?.[0] || '')).toUpperCase() || '?';
 }
@@ -62,7 +23,7 @@ export default function BranchManagers({ branch }) {
   const [managers, setManagers] = useState(null);
   const [error, setError] = useState('');
   const [modal, setModal] = useState(null); // null | { mode: 'create' } | { mode: 'edit', manager } | { mode: 'created', creds }
-  const [form, setForm] = useState({ name: '', email: '', phone: '', password: '', isActive: true });
+  const [form, setForm] = useState({ name: '', username: '', phone: '', password: '', isActive: true });
   const [saving, setSaving] = useState(false);
   const [busyId, setBusyId] = useState(null);
   const [confirm, setConfirm] = useState(null); // { kind: 'remove' | 'deactivate', manager }
@@ -82,11 +43,11 @@ export default function BranchManagers({ branch }) {
   }, [load]);
 
   const openCreate = () => {
-    setForm({ name: '', email: '', phone: '', password: generatePassword(), isActive: true });
+    setForm({ name: '', username: '', phone: '', password: generatePassword(), isActive: true });
     setModal({ mode: 'create' });
   };
   const openEdit = (manager) => {
-    setForm({ name: manager.name || '', email: manager.email, phone: manager.phone || '', password: '', isActive: manager.isActive });
+    setForm({ name: manager.name || '', username: manager.username || '', phone: manager.phone || '', password: '', isActive: manager.isActive });
     setModal({ mode: 'edit', manager });
   };
 
@@ -97,15 +58,15 @@ export default function BranchManagers({ branch }) {
       if (modal.mode === 'create') {
         const { data } = await managerApi.create(branch._id, {
           name: form.name,
-          email: form.email,
+          username: form.username,
           phone: form.phone,
           password: form.password,
         });
         setManagers((prev) => [...(prev || []), data.manager]);
-        setModal({ mode: 'created', creds: { email: data.manager.email, password: form.password, name: data.manager.name } });
+        setModal({ mode: 'created', creds: { username: data.manager.username, password: form.password, name: data.manager.name } });
         toast.success('Branch manager created');
       } else {
-        const payload = { name: form.name, email: form.email, phone: form.phone, isActive: form.isActive };
+        const payload = { name: form.name, username: form.username, phone: form.phone, isActive: form.isActive };
         if (form.password) payload.password = form.password;
         const { data } = await managerApi.update(modal.manager.id, payload);
         setManagers((prev) => prev.map((m) => (m.id === data.manager.id ? data.manager : m)));
@@ -149,7 +110,7 @@ export default function BranchManagers({ branch }) {
 
   const loginUrl = `${window.location.origin}/login`;
   const copyCreds = (creds) => {
-    navigator.clipboard.writeText(`DINEZA sign-in for ${branch.nameEn}\n${loginUrl}\nEmail: ${creds.email}\nPassword: ${creds.password}`);
+    navigator.clipboard.writeText(`DINEZA sign-in for ${branch.nameEn}\n${loginUrl}\nUsername: ${creds.username}\nPassword: ${creds.password}`);
     toast.success('Sign-in details copied');
   };
 
@@ -158,7 +119,7 @@ export default function BranchManagers({ branch }) {
       <Card>
         <CardHeader
           title="Branch managers"
-          description={`People who run ${branch.nameEn} day to day. They sign in with their own email and see only this branch.`}
+          description={`People who run ${branch.nameEn} day to day. They sign in with their own username and see only this branch.`}
           action={
             <Button size="sm" onClick={openCreate}>
               <UserPlus size={15} aria-hidden="true" /> Add manager
@@ -192,7 +153,7 @@ export default function BranchManagers({ branch }) {
                   )}
                   aria-hidden="true"
                 >
-                  {initials(m.name, m.email)}
+                  {initials(m.name, m.username)}
                 </div>
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
@@ -200,7 +161,7 @@ export default function BranchManagers({ branch }) {
                     <Badge color={m.isActive ? 'green' : 'gray'} dot>{m.isActive ? 'Active' : 'Deactivated'}</Badge>
                   </div>
                   <div className="truncate text-[13px] text-gray-500">
-                    {m.email}
+                    <span className="font-mono">{m.username}</span>
                     {m.phone ? ` · ${m.phone}` : ''}
                   </div>
                 </div>
@@ -253,16 +214,19 @@ export default function BranchManagers({ branch }) {
         open={modal?.mode === 'create' || modal?.mode === 'edit'}
         onClose={() => setModal(null)}
         title={modal?.mode === 'edit' ? 'Edit branch manager' : `New manager for ${branch.nameEn}`}
-        description={modal?.mode === 'edit' ? 'Changing the email or password signs them out everywhere.' : 'They will only see and manage this branch.'}
+        description={modal?.mode === 'edit' ? 'Changing the username or password signs them out everywhere.' : 'They will only see and manage this branch.'}
       >
         <form onSubmit={submit} className="space-y-4">
           <Input label="Full name" required autoComplete="off" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="e.g. Sara Al Balushi" />
-          <Input label="Email" type="email" required autoComplete="off" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} placeholder="manager@restaurant.com" />
+          <UsernameField required autoComplete="off" value={form.username} onChange={(username) => setForm({ ...form, username })} placeholder="e.g. sara.bawshar1" />
           <Input label="Phone" type="tel" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} placeholder="Optional" />
           <PasswordField
             label={modal?.mode === 'edit' ? 'New password' : 'Password'}
             required={modal?.mode !== 'edit'}
-            hint={modal?.mode === 'edit' ? 'Leave empty to keep the current password. Minimum 8 characters.' : 'Minimum 8 characters. Share it with the manager privately.'}
+            canGenerate
+            username={form.username}
+            rules={modal?.mode !== 'edit' || form.password !== ''}
+            hint={modal?.mode === 'edit' ? 'Leave empty to keep the current password.' : 'Share it with the manager privately.'}
             value={form.password}
             onChange={(password) => setForm({ ...form, password })}
           />
@@ -289,7 +253,7 @@ export default function BranchManagers({ branch }) {
             <dl className="divide-y divide-gray-100 rounded-lg border border-gray-200 text-sm">
               {[
                 ['Sign-in page', loginUrl],
-                ['Email', modal.creds.email],
+                ['Username', modal.creds.username],
                 ['Password', modal.creds.password],
               ].map(([k, v]) => (
                 <div key={k} className="flex items-center justify-between gap-4 px-4 py-2.5">

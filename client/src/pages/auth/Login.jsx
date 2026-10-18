@@ -9,12 +9,12 @@ import { errMsg } from '../../api/client.js';
 
 // Send each role to a page it is allowed to see
 function landingFor(user, from) {
-  if (!from) return homePath(user);
+  if (!from || user.mustChangePassword) return homePath(user);
   const branchArea = from.startsWith('/branch');
   return isBranchManager(user) === branchArea ? from : homePath(user);
 }
 
-// Minimal login — just email + password centered on screen. Brand managers and
+// Minimal login — just username + password centered on screen. Brand managers and
 // branch managers use the same form; the account's role decides where they land.
 // The full split-screen version (with brand panel + signup link) is preserved
 // in the comment block at the bottom of this file; swap back when needed.
@@ -22,7 +22,7 @@ export default function Login() {
   const { login } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const [form, setForm] = useState({ email: '', password: '' });
+  const [form, setForm] = useState({ username: '', password: '' });
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -32,7 +32,7 @@ export default function Login() {
     setError('');
     setLoading(true);
     try {
-      const user = await login(form.email, form.password);
+      const user = await login(form.username, form.password);
       navigate(landingFor(user, location.state?.from?.pathname), { replace: true });
     } catch (err) {
       setError(errMsg(err, 'Login failed'));
@@ -54,13 +54,15 @@ export default function Login() {
 
           <form onSubmit={submit} className="mt-6 space-y-4">
             <Input
-              label="Email"
-              type="email"
+              label="Username"
               required
-              autoComplete="email"
-              placeholder="you@restaurant.com"
-              value={form.email}
-              onChange={(e) => setForm({ ...form, email: e.target.value })}
+              autoComplete="username"
+              autoCapitalize="none"
+              autoCorrect="off"
+              spellCheck={false}
+              placeholder="your.username1"
+              value={form.username}
+              onChange={(e) => setForm({ ...form, username: e.target.value.toLowerCase().replace(/\s/g, '') })}
             />
             <Input
               label="Password"
@@ -100,7 +102,7 @@ function FullLogin() {
   const { login } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const [form, setForm] = useState({ email: '', password: '' });
+  const [form, setForm] = useState({ username: '', password: '' });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -109,7 +111,7 @@ function FullLogin() {
     setError('');
     setLoading(true);
     try {
-      const user = await login(form.email, form.password);
+      const user = await login(form.username, form.password);
       navigate(location.state?.from?.pathname || (user.restaurantId ? '/dashboard' : '/onboarding'), { replace: true });
     } catch (err) {
       setError(errMsg(err, 'Login failed'));
@@ -131,13 +133,12 @@ function FullLogin() {
     >
       <form onSubmit={submit} className="space-y-4">
         <Input
-          label="Email"
-          type="email"
+          label="Username"
           required
-          autoComplete="email"
-          placeholder="you@restaurant.com"
-          value={form.email}
-          onChange={(e) => setForm({ ...form, email: e.target.value })}
+          autoComplete="username"
+          autoCapitalize="none"
+          value={form.username}
+          onChange={(e) => setForm({ ...form, username: e.target.value.toLowerCase().replace(/\s/g, '') })}
         />
         <Input
           label="Password"

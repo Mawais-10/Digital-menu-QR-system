@@ -98,7 +98,7 @@ function AccountFooter({ onSignOut, collapsed = false }) {
           )}
           <div className="min-w-0 flex-1">
             <div className="truncate text-sm font-semibold text-gray-900">{name}</div>
-            <div className="truncate text-xs text-gray-500">{user?.email}</div>
+            <div className="truncate font-mono text-xs text-gray-500">{user?.username}</div>
           </div>
         </div>
         <IconButton label="Sign out" onClick={onSignOut} variant="danger" size="sm" className="absolute right-2 top-1/2 -translate-y-1/2">
