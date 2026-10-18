@@ -5,7 +5,7 @@ import {
 } from 'lucide-react';
 import {
   Button, IconButton, Input, Textarea, Select, Modal, ConfirmDialog, Toggle, Badge, Card, EmptyState, ErrorState,
-  PageHeader, PageSkeleton, ImageFrame, SegmentedControl, cx,
+  PageHeader, PageSkeleton, ImageFrame, SegmentedControl, ScrollRow, cx,
 } from '../../components/ui.jsx';
 import { categoryApi, itemApi } from '../../api/endpoints.js';
 import { errMsg } from '../../api/client.js';
@@ -261,7 +261,7 @@ export default function MenuManagement() {
       ) : (
         <>
           {/* Category filter */}
-          <nav aria-label="Categories" className="no-scrollbar -mx-4 mb-4 overflow-x-auto px-4 sm:mx-0 sm:px-0">
+          <ScrollRow label="Categories" activeKey={`${activeCat}:${activeIndex}`} className="-mx-4 mb-4 sm:mx-0" innerClassName="px-4 sm:px-0">
             <div className="flex w-max gap-1.5 pb-1">
               {[{ _id: 'all', nameEn: 'All items' }, ...categories].map((c) => {
                 const active = activeCat === c._id;
@@ -284,7 +284,7 @@ export default function MenuManagement() {
                 );
               })}
             </div>
-          </nav>
+          </ScrollRow>
 
           {/* Toolbar: search + actions for the selected category */}
           <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
