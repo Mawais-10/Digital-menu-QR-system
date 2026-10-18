@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Search, PackageX, CircleCheck, EyeOff, Loader2, Ban, ListChecks } from 'lucide-react';
 import { Card, Badge, Toggle, SegmentedControl, ImageFrame, Input, Select, EmptyState, cx } from './ui.jsx';
+import { THUMB_WIDTH } from '../lib/image.js';
 
 /*
  * Branch menu availability, shared by the brand manager (branch page) and the branch manager.
@@ -195,6 +196,7 @@ export default function AvailabilityList({ rows, onUpdate, pending, currency = '
                     <div className="flex min-w-0 items-center gap-3">
                       <ImageFrame
                         src={row.item.imageUrl}
+                        widths={[THUMB_WIDTH]}
                         alt=""
                         ratio="aspect-square"
                         className={cx('w-12 shrink-0 rounded-lg ring-1 ring-gray-200', (s === 'hidden' || masterOff) && 'opacity-50')}

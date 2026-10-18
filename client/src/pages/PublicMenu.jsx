@@ -5,6 +5,11 @@ import {
 } from 'lucide-react';
 import { publicApi } from '../api/endpoints.js';
 import { SmartImage } from '../components/motion.jsx';
+import { imgUrl, fallBackToOriginal, CARD_WIDTHS, DETAIL_WIDTHS, THUMB_WIDTH, LOGO_WIDTH } from '../lib/image.js';
+
+// Rendered width of a product card photo: 2 per row on phones up to 5 on wide screens
+const CARD_SIZES = '(min-width: 1280px) 20vw, (min-width: 1024px) 25vw, (min-width: 768px) 33vw, 50vw';
+const DETAIL_SIZES = '(min-width: 582px) 550px, calc(100vw - 32px)';
 
 const fmtPrice = (n, currency = 'OMR') => Number(n).toFixed(currency === 'OMR' ? 3 : 2);
 
@@ -277,6 +282,7 @@ export default function PublicMenu() {
           {restaurant.logoUrl ? (
             <SmartImage
               src={restaurant.logoUrl}
+              widths={[LOGO_WIDTH]}
               alt={restaurant.nameEn}
               eager
               className="w-fit overflow-hidden rounded-2xl"
@@ -349,7 +355,12 @@ export default function PublicMenu() {
           title={restaurant.nameEn}
         >
           {restaurant.logoUrl ? (
-            <img src={restaurant.logoUrl} alt="" className="h-7 w-auto max-w-[60px] rounded object-contain" />
+            <img
+              src={imgUrl(restaurant.logoUrl, LOGO_WIDTH)}
+              onError={(e) => fallBackToOriginal(e.currentTarget, restaurant.logoUrl)}
+              alt=""
+              className="h-7 w-auto max-w-[60px] rounded object-contain"
+            />
           ) : (
             <span className="text-sm font-bold" style={{ color: accent }}>{restaurant.nameEn[0]}</span>
           )}
@@ -368,13 +379,18 @@ export default function PublicMenu() {
           {restaurant.logoUrl && (
             <div
               className="absolute inset-0 scale-125 bg-center bg-no-repeat opacity-60 blur-2xl"
-              style={{ backgroundImage: `url(${restaurant.logoUrl})`, backgroundSize: '55%' }}
+              style={{ backgroundImage: `url(${imgUrl(restaurant.logoUrl, LOGO_WIDTH)})`, backgroundSize: '55%' }}
             />
           )}
           <div className="pattern-arabesque absolute inset-0 opacity-40" />
           <div className="relative z-20 flex h-full items-center justify-center">
             {restaurant.logoUrl ? (
-              <img src={restaurant.logoUrl} alt={restaurant.nameEn} className="h-24 w-auto max-w-[70%] object-contain drop-shadow" />
+              <img
+                src={imgUrl(restaurant.logoUrl, LOGO_WIDTH)}
+                onError={(e) => fallBackToOriginal(e.currentTarget, restaurant.logoUrl)}
+                alt={restaurant.nameEn}
+                className="h-24 w-auto max-w-[70%] object-contain drop-shadow"
+              />
             ) : (
               <UtensilsCrossed size={40} style={{ color: accent }} />
             )}
@@ -684,7 +700,15 @@ export default function PublicMenu() {
               {/* Full image shown uncropped inside the frame */}
               <div className="relative flex w-full shrink-0 items-center overflow-hidden rounded-t-xl bg-black/40">
                 {detail.imageUrl ? (
-                  <SmartImage src={detail.imageUrl} alt="" eager className="w-full" imgClassName="aspect-[4/3] w-full object-contain" />
+                  <SmartImage
+                    src={detail.imageUrl}
+                    widths={DETAIL_WIDTHS}
+                    sizes={DETAIL_SIZES}
+                    alt=""
+                    eager
+                    className="w-full"
+                    imgClassName="aspect-[4/3] w-full object-contain"
+                  />
                 ) : (
                   <div className="flex aspect-[16/9] w-full items-center justify-center rounded-t-xl" style={{ backgroundColor: primary10 }}>
                     <UtensilsCrossed size={40} style={{ color: accent }} />
@@ -808,7 +832,12 @@ export default function PublicMenu() {
                     <div key={item.id} className={`flex items-center border-b border-white/5 py-3 last:border-b-0 ${item.soldOut ? 'opacity-60' : ''}`}>
                       <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-md" style={{ backgroundColor: primary10 }}>
                         {item.imageUrl ? (
-                          <img src={item.imageUrl} alt="" className="absolute inset-0 h-full w-full rounded-md object-cover object-center" />
+                          <img
+                            src={imgUrl(item.imageUrl, THUMB_WIDTH)}
+                            onError={(e) => fallBackToOriginal(e.currentTarget, item.imageUrl)}
+                            alt=""
+                            className="absolute inset-0 h-full w-full rounded-md object-cover object-center"
+                          />
                         ) : (
                           <span className="flex h-full items-center justify-center" style={{ color: accent }}><UtensilsCrossed size={20} /></span>
                         )}
@@ -883,6 +912,8 @@ function ProductCard({ item, theme, onTheme, accent, primary10, isAr, currency, 
           {item.imageUrl ? (
             <SmartImage
               src={item.imageUrl}
+              widths={CARD_WIDTHS}
+              sizes={CARD_SIZES}
               alt={item.nameEn}
               className={`h-full w-full ${item.soldOut ? 'opacity-45 grayscale' : ''}`}
               imgClassName="h-full w-full object-contain p-1.5"

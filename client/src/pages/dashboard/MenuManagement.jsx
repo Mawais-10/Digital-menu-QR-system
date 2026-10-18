@@ -9,6 +9,7 @@ import {
 } from '../../components/ui.jsx';
 import { categoryApi, itemApi } from '../../api/endpoints.js';
 import { errMsg } from '../../api/client.js';
+import { CARD_WIDTHS } from '../../lib/image.js';
 import { useToast } from '../../context/ToastContext.jsx';
 import { useAuth } from '../../context/AuthContext.jsx';
 
@@ -333,7 +334,16 @@ export default function MenuManagement() {
               {visibleItems.map((item) => (
                 <li key={item._id}>
                   <Card className={cx('flex h-full flex-col overflow-hidden transition-opacity', !item.isActive && 'opacity-60')}>
-                    <ImageFrame src={item.imageUrl} alt={item.nameEn} fit="contain" ratio="aspect-[4/3]" iconSize={32} className="border-b border-gray-100">
+                    <ImageFrame
+                      src={item.imageUrl}
+                      widths={CARD_WIDTHS}
+                      sizes="(min-width: 1280px) 30vw, (min-width: 640px) 45vw, 100vw"
+                      alt={item.nameEn}
+                      fit="contain"
+                      ratio="aspect-[4/3]"
+                      iconSize={32}
+                      className="border-b border-gray-100"
+                    >
                       {item.badgeText && (
                         <span className="absolute start-2.5 top-2.5 rounded-md bg-red-600 px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide text-white shadow-sm">
                           {item.badgeText}

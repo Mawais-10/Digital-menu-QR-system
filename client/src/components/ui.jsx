@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, Loader2, AlertTriangle, RefreshCw, ImageIcon, ArrowLeft, ChevronDown, ArrowUpRight } from 'lucide-react';
+import { imgUrl, imgSrcSet, fallBackToOriginal } from '../lib/image.js';
 
 /* ==========================================================================
    DINEZA dashboard design system
@@ -538,7 +539,8 @@ export function StatCard({ label, value, icon: Icon, to, hint, tone = 'brand' })
  * The frame owns the size (aspect ratio + width from the parent), so a huge upload can never
  * stretch a card, table row, form or modal. The stored file is never altered.
  */
-export function ImageFrame({ src, alt = '', fit = 'contain', ratio = 'aspect-[4/3]', className = '', checker = false, iconSize = 24, eager = false, children }) {
+// widths + sizes: load a resized Cloudinary copy that fits the frame (see lib/image.js)
+export function ImageFrame({ src, alt = '', fit = 'contain', ratio = 'aspect-[4/3]', className = '', checker = false, iconSize = 24, eager = false, widths, sizes, children }) {
   // Load state is keyed by URL, so a new photo never inherits the old one's state and a
   // cached image that finishes instantly can't be reset back to "loading".
   const [loadedSrc, setLoadedSrc] = useState(null);
@@ -558,14 +560,19 @@ export function ImageFrame({ src, alt = '', fit = 'contain', ratio = 'aspect-[4/
         <>
           {!loaded && <div className="shimmer absolute inset-0" aria-hidden="true" />}
           <img
+            key={src}
             ref={imgRef}
-            src={src}
+            src={widths ? imgUrl(src, widths[Math.floor(widths.length / 2)]) : src}
+            srcSet={widths?.length > 1 ? imgSrcSet(src, widths) : undefined}
+            sizes={widths?.length > 1 ? sizes : undefined}
             alt={alt}
             loading={eager ? 'eager' : 'lazy'}
             decoding="async"
             draggable={false}
             onLoad={() => setLoadedSrc(src)}
-            onError={() => setFailedSrc(src)}
+            onError={(e) => {
+              if (!fallBackToOriginal(e.currentTarget, src)) setFailedSrc(src);
+            }}
             className={cx(
               'absolute inset-0 h-full w-full transition-opacity duration-300',
               fit === 'cover' ? 'object-cover' : 'object-contain p-[6%]',
